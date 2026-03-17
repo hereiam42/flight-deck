@@ -2,11 +2,13 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Workspace } from '@flight-deck/shared'
+import type { Database } from '@flight-deck/shared'
+
+type WorkspaceRow = Database['public']['Tables']['workspaces']['Row']
 
 interface TopNavProps {
-  workspaces: Workspace[]
-  currentWorkspace: Workspace | null
+  workspaces: WorkspaceRow[]
+  currentWorkspace: WorkspaceRow | null
 }
 
 export function TopNav({ workspaces, currentWorkspace }: TopNavProps) {
