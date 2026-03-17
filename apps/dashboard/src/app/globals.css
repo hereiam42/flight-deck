@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    --bg: #0a0a0b;
+    --surface-1: #111113;
+    --surface-2: #18181b;
+    --surface-3: #1f1f23;
+    --border: #2e2e32;
+    --text: #e4e4e7;
+    --text-muted: #71717a;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  * {
+    @apply border-[#2e2e32];
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-[#2e2e32] bg-[#111113] p-4;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-active {
+    @apply badge bg-emerald-500/10 text-emerald-400;
+  }
+
+  .badge-paused {
+    @apply badge bg-yellow-500/10 text-yellow-400;
+  }
+
+  .badge-archived {
+    @apply badge bg-zinc-500/10 text-zinc-400;
+  }
+
+  .badge-pending {
+    @apply badge bg-blue-500/10 text-blue-400;
+  }
+
+  .badge-running {
+    @apply badge bg-indigo-500/10 text-indigo-400;
+  }
+
+  .badge-completed {
+    @apply badge bg-emerald-500/10 text-emerald-400;
+  }
+
+  .badge-failed {
+    @apply badge bg-red-500/10 text-red-400;
+  }
+
+  .badge-cancelled {
+    @apply badge bg-zinc-500/10 text-zinc-400;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-500/10 text-blue-400;
+  }
+
+  .badge-approval_required {
+    @apply badge bg-yellow-500/10 text-yellow-400;
+  }
+
+  .badge-error {
+    @apply badge bg-red-500/10 text-red-400;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-500/10 text-emerald-400;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-indigo-600 text-white hover:bg-indigo-500;
+  }
+
+  .btn-secondary {
+    @apply btn border border-[#2e2e32] bg-[#18181b] text-zinc-300 hover:bg-[#1f1f23] hover:text-white;
+  }
+
+  .btn-ghost {
+    @apply btn text-zinc-400 hover:bg-[#18181b] hover:text-zinc-200;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-900/20 text-red-400 hover:bg-red-900/40;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-[#2e2e32] bg-[#18181b] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-zinc-300;
+  }
+
+  .stat-card {
+    @apply card flex flex-col gap-1;
+  }
+}
