@@ -6,15 +6,16 @@ export async function getCurrentWorkspaceId(): Promise<string | null> {
   const fromCookie = cookieStore.get('workspace_id')?.value
   if (fromCookie) return fromCookie
 
-  // Fall back to first workspace
+  // Fall back to first workspace (ordered by name for consistency with layout)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data } = await supabase
     .from('workspace_members')
-    .select('workspace_id')
+    .select('workspace_id, workspaces(name)')
     .eq('user_id', user.id)
+    .order('workspace_id')
     .limit(1)
     .single()
 

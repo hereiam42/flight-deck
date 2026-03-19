@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0a0b]">
-      <Sidebar />
+      <Sidebar workspaceSlug={currentWorkspace?.slug} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav
           workspaces={workspaces}

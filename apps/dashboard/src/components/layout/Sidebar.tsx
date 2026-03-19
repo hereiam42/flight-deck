@@ -156,8 +156,15 @@ const sections: NavSection[] = [
   },
 ]
 
-export function Sidebar() {
+export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
   const pathname = usePathname()
+
+  const visibleSections = sections.filter((section) => {
+    if (section.title === 'Seasonal Labor') {
+      return workspaceSlug === 'niseko-jobs'
+    }
+    return true
+  })
 
   return (
     <aside className="flex h-full w-56 flex-col border-r border-[#2e2e32] bg-[#111113]">
@@ -177,7 +184,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-2">
-        {sections.map((section, si) => (
+        {visibleSections.map((section, si) => (
           <div key={si} className={section.title ? 'mt-4' : ''}>
             {section.title && (
               <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
