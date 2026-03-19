@@ -6,6 +6,300 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// ---- Tool type definitions ----
+
+interface ToolDef {
+  name: string
+  type: 'database_read' | 'database_write' | 'web_search' | 'send_notification'
+  config: Record<string, unknown>
+}
+
+interface ToolCallLog {
+  tool_name: string
+  tool_type: string
+  input: unknown
+  output: unknown
+  duration_ms: number
+  tier: number
+}
+
+// ---- Input schemas per tool type ----
+
+function buildAnthropicTools(toolDefs: ToolDef[]): Anthropic.Tool[] {
+  return toolDefs.map((t) => {
+    switch (t.type) {
+      case 'database_read':
+        return {
+          name: t.name,
+          description: (t.config.description as string) ?? `Read from ${t.config.table}`,
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              select: { type: 'string', description: 'Comma-separated columns to select. Default: *' },
+              filter: {
+                type: 'object',
+                description: 'Key-value pairs for eq filters. e.g. {"status": "active", "email": "foo@bar.com"}',
+              },
+              ilike: {
+                type: 'object',
+                description: 'Key-value pairs for ilike (case-insensitive partial match) filters. e.g. {"email": "%@gmail.com"}',
+              },
+              order: { type: 'string', description: 'Column to order by. Prefix with - for descending. e.g. "-created_at"' },
+              limit: { type: 'number', description: 'Max rows to return. Default: 50' },
+            },
+          },
+        }
+      case 'database_write':
+        return {
+          name: t.name,
+          description: (t.config.description as string) ?? `Write to ${t.config.table}`,
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              data: {
+                type: 'object',
+                description: 'The row data to insert or update. For update, include the filter fields too.',
+              },
+              match: {
+                type: 'object',
+                description: 'For update/upsert: key-value pairs identifying which row(s) to match.',
+              },
+            },
+            required: ['data'],
+          },
+        }
+      case 'web_search':
+        return {
+          name: t.name,
+          description: (t.config.description as string) ?? 'Search the web',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              query: { type: 'string', description: 'The search query' },
+              num_results: { type: 'number', description: 'Number of results. Default: 5' },
+            },
+            required: ['query'],
+          },
+        }
+      case 'send_notification':
+        return {
+          name: t.name,
+          description: (t.config.description as string) ?? 'Send a notification for human review',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              title: { type: 'string', description: 'Notification title' },
+              message: { type: 'string', description: 'Notification body/details' },
+              type: { type: 'string', description: 'Notification type: info, warning, approval_required, critical_approval' },
+            },
+            required: ['title'],
+          },
+        }
+      default:
+        return {
+          name: t.name,
+          description: `Unknown tool type: ${t.type}`,
+          input_schema: { type: 'object' as const, properties: {} },
+        }
+    }
+  })
+}
+
+// ---- Tool executors ----
+
+async function executeDatabaseRead(
+  input: Record<string, unknown>,
+  config: Record<string, unknown>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  workspaceId: string,
+): Promise<unknown> {
+  const table = config.table as string
+  if (!table) throw new Error('database_read tool missing table in config')
+
+  const selectCols = (input.select as string) ?? '*'
+  const joinTables = config.join as string[] | undefined
+
+  // Build select with joins
+  let selectStr = selectCols
+  if (joinTables?.length) {
+    selectStr = `${selectCols}, ${joinTables.map((j) => `${j}(*)`).join(', ')}`
+  }
+
+  let query = supabase.from(table).select(selectStr)
+
+  // Always scope to workspace
+  query = query.eq('workspace_id', workspaceId)
+
+  // Apply eq filters
+  const filter = input.filter as Record<string, unknown> | undefined
+  if (filter) {
+    for (const [key, value] of Object.entries(filter)) {
+      query = query.eq(key, value)
+    }
+  }
+
+  // Apply config-level default filters
+  const configFilter = config.filter as Record<string, unknown> | undefined
+  if (configFilter) {
+    for (const [key, value] of Object.entries(configFilter)) {
+      // Don't override input filters
+      if (!filter || !(key in filter)) {
+        query = query.eq(key, value)
+      }
+    }
+  }
+
+  // Apply ilike filters
+  const ilike = input.ilike as Record<string, string> | undefined
+  if (ilike) {
+    for (const [key, value] of Object.entries(ilike)) {
+      query = query.ilike(key, value)
+    }
+  }
+
+  // Ordering
+  const order = input.order as string | undefined
+  if (order) {
+    const desc = order.startsWith('-')
+    const col = desc ? order.slice(1) : order
+    query = query.order(col, { ascending: !desc })
+  } else {
+    query = query.order('created_at', { ascending: false })
+  }
+
+  // Limit
+  const limit = (input.limit as number) ?? 50
+  query = query.limit(limit)
+
+  const { data, error } = await query
+  if (error) throw new Error(`database_read error: ${error.message}`)
+  return data
+}
+
+async function executeDatabaseWrite(
+  input: Record<string, unknown>,
+  config: Record<string, unknown>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  workspaceId: string,
+): Promise<unknown> {
+  const table = config.table as string
+  if (!table) throw new Error('database_write tool missing table in config')
+
+  const operation = (config.operation as string) ?? 'insert'
+  const data = input.data as Record<string, unknown>
+  if (!data) throw new Error('database_write requires data field')
+
+  // Always inject workspace_id
+  data.workspace_id = workspaceId
+
+  if (operation === 'insert') {
+    const { data: result, error } = await supabase
+      .from(table)
+      .insert(data)
+      .select()
+      .single()
+    if (error) throw new Error(`database_write insert error: ${error.message}`)
+    return result
+  }
+
+  if (operation === 'update') {
+    const match = input.match as Record<string, unknown>
+    if (!match) throw new Error('database_write update requires match field')
+
+    let query = supabase.from(table).update(data)
+    query = query.eq('workspace_id', workspaceId)
+    for (const [key, value] of Object.entries(match)) {
+      query = query.eq(key, value)
+    }
+    const { data: result, error } = await query.select()
+    if (error) throw new Error(`database_write update error: ${error.message}`)
+    return result
+  }
+
+  if (operation === 'upsert') {
+    const conflictCols = config.conflict as string[] | undefined
+    const opts: Record<string, unknown> = {}
+    if (conflictCols) opts.onConflict = conflictCols.join(',')
+
+    const { data: result, error } = await supabase
+      .from(table)
+      .upsert(data, opts)
+      .select()
+    if (error) throw new Error(`database_write upsert error: ${error.message}`)
+    return result
+  }
+
+  throw new Error(`Unknown database_write operation: ${operation}`)
+}
+
+async function executeSendNotification(
+  input: Record<string, unknown>,
+  config: Record<string, unknown>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  workspaceId: string,
+  agentId: string,
+  runId: string,
+): Promise<unknown> {
+  const notifType = (input.type as string) ?? (config.type as string) ?? 'info'
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert({
+      workspace_id: workspaceId,
+      agent_id: agentId,
+      run_id: runId,
+      type: notifType,
+      title: input.title as string,
+      payload: { message: input.message },
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(`send_notification error: ${error.message}`)
+  return { notification_id: data.id, status: 'sent' }
+}
+
+async function executeWebSearch(
+  input: Record<string, unknown>,
+): Promise<unknown> {
+  const query = input.query as string
+  if (!query) throw new Error('web_search requires a query')
+
+  const numResults = (input.num_results as number) ?? 5
+
+  // Try Serper API if key is available
+  const serperKey = Deno.env.get('SERPER_API_KEY')
+  if (serperKey) {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': serperKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, num: numResults }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return (data.organic ?? []).map((r: Record<string, unknown>) => ({
+        title: r.title,
+        url: r.link,
+        snippet: r.snippet,
+      }))
+    }
+  }
+
+  // Fallback: return a message that web search isn't configured
+  return {
+    error: 'Web search not configured. Set SERPER_API_KEY in Supabase secrets to enable.',
+    query,
+  }
+}
+
+// ---- Main handler ----
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -74,43 +368,10 @@ Deno.serve(async (req) => {
     }
     runId = run.id
 
-    // ---- 3. Resolve tool definitions ----
-    const toolRefs: Array<{ tool_id?: string; name: string; description?: string }> =
-      Array.isArray(agent.tools) ? agent.tools : []
-
-    const toolDefinitions: Anthropic.Tool[] = []
-    const toolConfigs: Record<string, { config: unknown; auth_method: string | null }> = {}
-
-    if (toolRefs.length > 0) {
-      const toolIds = toolRefs.map((t) => t.tool_id).filter(Boolean)
-      if (toolIds.length > 0) {
-        const { data: tools } = await supabase
-          .from('tools')
-          .select('*')
-          .in('id', toolIds)
-          .eq('status', 'active')
-
-        for (const tool of tools ?? []) {
-          const cfg = tool.config as {
-            endpoint?: string
-            input_schema?: Anthropic.Tool['input_schema']
-            description?: string
-          }
-          toolDefinitions.push({
-            name: tool.name,
-            description: cfg.description ?? `Tool: ${tool.name}`,
-            input_schema: cfg.input_schema ?? {
-              type: 'object',
-              properties: {},
-            },
-          })
-          toolConfigs[tool.name] = {
-            config: tool.config,
-            auth_method: tool.auth_method,
-          }
-        }
-      }
-    }
+    // ---- 3. Resolve tool definitions from agent config ----
+    const toolDefs: ToolDef[] = Array.isArray(agent.tools) ? agent.tools : []
+    const anthropicTools = buildAnthropicTools(toolDefs)
+    const toolMap = new Map<string, ToolDef>(toolDefs.map((t) => [t.name, t]))
 
     // ---- 4. Build initial messages ----
     const userContent = typeof input === 'string'
@@ -125,26 +386,28 @@ Deno.serve(async (req) => {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalOutput: unknown = null
+    const toolCallLogs: ToolCallLog[] = []
     const MAX_ITERATIONS = 10
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const response = await anthropic.messages.create({
         model: agent.model,
-        max_tokens: 8192,
+        max_tokens: 4096,
         system: agent.system_prompt,
-        tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
+        tools: anthropicTools.length > 0 ? anthropicTools : undefined,
         messages,
       })
 
       totalInputTokens += response.usage.input_tokens
       totalOutputTokens += response.usage.output_tokens
 
-      // Append assistant response to messages
+      // Append assistant response
       messages.push({ role: 'assistant', content: response.content })
 
       if (response.stop_reason === 'end_turn') {
-        // Extract text output
-        const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text')
+        const textBlock = response.content.find(
+          (b): b is Anthropic.TextBlock => b.type === 'text',
+        )
         finalOutput = textBlock?.text ?? null
         break
       }
@@ -155,11 +418,53 @@ Deno.serve(async (req) => {
         for (const block of response.content) {
           if (block.type !== 'tool_use') continue
 
-          const toolResult = await executeTool(block, toolConfigs, supabase, agent.workspace_id)
+          const toolDef = toolMap.get(block.name)
+          const toolStart = Date.now()
+          let result: unknown
+
+          try {
+            if (!toolDef) {
+              result = { error: `Tool "${block.name}" not found in agent config` }
+            } else {
+              const inp = block.input as Record<string, unknown>
+
+              switch (toolDef.type) {
+                case 'database_read':
+                  result = await executeDatabaseRead(inp, toolDef.config, supabase, agent.workspace_id)
+                  break
+                case 'database_write':
+                  result = await executeDatabaseWrite(inp, toolDef.config, supabase, agent.workspace_id)
+                  break
+                case 'send_notification':
+                  result = await executeSendNotification(
+                    inp, toolDef.config, supabase, agent.workspace_id, agent.id, runId!,
+                  )
+                  break
+                case 'web_search':
+                  result = await executeWebSearch(inp)
+                  break
+                default:
+                  result = { error: `Unknown tool type: ${toolDef.type}` }
+              }
+            }
+          } catch (err) {
+            result = { error: err instanceof Error ? err.message : String(err) }
+          }
+
+          const toolDuration = Date.now() - toolStart
+          toolCallLogs.push({
+            tool_name: block.name,
+            tool_type: toolDef?.type ?? 'unknown',
+            input: block.input,
+            output: result,
+            duration_ms: toolDuration,
+            tier: 1,
+          })
+
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
-            content: toolResult,
+            content: JSON.stringify(result),
           })
         }
 
@@ -173,7 +478,7 @@ Deno.serve(async (req) => {
     const durationMs = Date.now() - runStartedAt
     const tokenCount = totalInputTokens + totalOutputTokens
 
-    // Rough cost estimate for claude-sonnet-4-6 ($3/$15 per MTok in/out)
+    // Cost estimate: Sonnet input $3/MTok, output $15/MTok
     const costUsd = (totalInputTokens * 3 + totalOutputTokens * 15) / 1_000_000
 
     // ---- 6. Update run record ----
@@ -186,10 +491,11 @@ Deno.serve(async (req) => {
         token_count: tokenCount,
         cost_usd: costUsd,
         completed_at: new Date().toISOString(),
+        metadata: { tool_calls: toolCallLogs },
       })
       .eq('id', runId)
 
-    // ---- 7. Auto-create notification if output needs review ----
+    // ---- 7. Auto-create notification if output signals review needed ----
     if (needsHumanReview(finalOutput)) {
       await supabase.from('notifications').insert({
         workspace_id: agent.workspace_id,
@@ -202,13 +508,19 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ run_id: runId, output: finalOutput, token_count: tokenCount, cost_usd: costUsd }),
+      JSON.stringify({
+        run_id: runId,
+        output: finalOutput,
+        tool_calls: toolCallLogs,
+        token_count: tokenCount,
+        cost_usd: costUsd,
+        duration_ms: durationMs,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
 
-    // Mark run as failed if we created one
     if (runId) {
       await supabase
         .from('runs')
@@ -228,99 +540,14 @@ Deno.serve(async (req) => {
   }
 })
 
-// ---- Tool executor ----
-
-async function executeTool(
-  block: Anthropic.ToolUseBlock,
-  toolConfigs: Record<string, { config: unknown; auth_method: string | null }>,
-  // deno-lint-ignore no-explicit-any
-  supabase: any,
-  workspaceId: string,
-): Promise<string> {
-  const cfg = toolConfigs[block.name]
-  if (!cfg) {
-    return JSON.stringify({ error: `Tool "${block.name}" not found in this agent's tool set` })
-  }
-
-  const toolConfig = cfg.config as {
-    endpoint?: string
-    method?: string
-    headers_template?: Record<string, string>
-    secret_key?: string  // key name in secrets table
-  }
-
-  if (!toolConfig.endpoint) {
-    return JSON.stringify({ error: `Tool "${block.name}" has no endpoint configured` })
-  }
-
-  try {
-    // Resolve secret value if needed
-    let resolvedHeaders: Record<string, string> = {}
-    if (toolConfig.headers_template) {
-      resolvedHeaders = { ...toolConfig.headers_template }
-
-      // Replace {{SECRET:key_name}} placeholders
-      for (const [headerName, headerValue] of Object.entries(resolvedHeaders)) {
-        const secretMatch = headerValue.match(/\{\{SECRET:(.+?)\}\}/)
-        if (secretMatch) {
-          const secretKey = secretMatch[1]
-          const { data: secret } = await supabase
-            .from('secrets')
-            .select('encrypted_value')
-            .eq('workspace_id', workspaceId)
-            .eq('key', secretKey)
-            .single()
-
-          resolvedHeaders[headerName] = secret?.encrypted_value ?? headerValue
-        }
-      }
-    }
-
-    const method = (toolConfig.method ?? 'POST').toUpperCase()
-    const input = block.input as Record<string, unknown>
-
-    let url = toolConfig.endpoint
-    let body: string | undefined
-
-    if (method === 'GET' && Object.keys(input).length > 0) {
-      const params = new URLSearchParams(
-        Object.entries(input).map(([k, v]) => [k, String(v)]),
-      )
-      url = `${url}?${params}`
-    } else if (method !== 'GET') {
-      body = JSON.stringify(input)
-      resolvedHeaders['Content-Type'] = 'application/json'
-    }
-
-    const res = await fetch(url, {
-      method,
-      headers: resolvedHeaders,
-      body,
-    })
-
-    const responseText = await res.text()
-
-    if (!res.ok) {
-      return JSON.stringify({ error: `HTTP ${res.status}`, body: responseText })
-    }
-
-    // Try to parse as JSON, fall back to text
-    try {
-      return JSON.stringify(JSON.parse(responseText))
-    } catch {
-      return responseText
-    }
-  } catch (err) {
-    return JSON.stringify({ error: err instanceof Error ? err.message : String(err) })
-  }
-}
-
 // ---- Heuristic: does this output need human review? ----
 
 function needsHumanReview(output: unknown): boolean {
   if (!output || typeof output !== 'string') return false
   const lower = output.toLowerCase()
   return (
+    lower.includes('"needs_review": true') ||
+    lower.includes('"needs_review":true') ||
     lower.includes('approval required') ||
     lower.includes('please review') ||
     lower.includes('needs human') ||
