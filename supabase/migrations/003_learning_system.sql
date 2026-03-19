@@ -14,7 +14,7 @@ COMMENT ON COLUMN tools.tier IS '1=autonomous, 2=approval_required, 3=double_con
 -- ---- Add critical_approval to notifications type check ----
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
 ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
-  CHECK (type IN ('info', 'approval_required', 'critical_approval', 'error', 'success'));
+  CHECK (type IN ('info', 'warning', 'approval_required', 'critical_approval', 'error', 'success'));
 
 -- ============================================================
 -- PROMPT_VERSIONS — Track system prompt evolution per agent
