@@ -161,7 +161,7 @@ export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
 
   const visibleSections = sections.filter((section) => {
     if (section.title === 'Seasonal Labor') {
-      return workspaceSlug === 'niseko-jobs'
+      return workspaceSlug === 'beyond-peaks'
     }
     return true
   })
