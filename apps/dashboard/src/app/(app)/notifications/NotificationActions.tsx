@@ -9,9 +9,11 @@ interface Props {
   type: string
   read: boolean
   actioned: boolean
+  agentName?: string
+  payload?: Record<string, unknown> | null
 }
 
-export function NotificationActions({ notificationId, type, read, actioned }: Props) {
+export function NotificationActions({ notificationId, type, read, actioned, agentName, payload }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -28,6 +30,26 @@ export function NotificationActions({ notificationId, type, read, actioned }: Pr
 
   async function handleAction(action: 'approved' | 'rejected') {
     setLoading(true)
+
+    // If approving content from the SEO content generator, publish the article
+    if (action === 'approved' && agentName === 'seo_content_generator' && payload) {
+      const article = payload.article as Record<string, unknown> | undefined
+      const boardId = payload.board_id as string | undefined
+
+      // Find the pending_review content by title match and publish it
+      if (article?.title || boardId) {
+        const query = supabase
+          .from('content')
+          .update({ status: 'published', published_at: new Date().toISOString() })
+          .eq('status', 'pending_review')
+
+        if (boardId) query.eq('board_id', boardId)
+        if (article?.title) query.eq('title', article.title as string)
+
+        await query
+      }
+    }
+
     await supabase
       .from('notifications')
       .update({ read: true, actioned: true, action_taken: action })
@@ -56,7 +78,7 @@ export function NotificationActions({ notificationId, type, read, actioned }: Pr
             disabled={loading}
             className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            Approve
+            {agentName === 'seo_content_generator' ? 'Approve & Publish' : 'Approve'}
           </button>
           <button
             onClick={() => handleAction('rejected')}

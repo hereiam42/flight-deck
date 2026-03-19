@@ -71,6 +71,8 @@ export default async function NotificationsPage() {
                   type={n.type}
                   read={n.read}
                   actioned={n.actioned}
+                  agentName={(n.agents as { name: string } | null)?.name}
+                  payload={n.payload as Record<string, unknown> | null}
                 />
               </div>
               {n.actioned && n.action_taken && (
