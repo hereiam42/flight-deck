@@ -33,8 +33,8 @@ export async function resolveBoard() {
     }
   }
 
-  // 4. Fallback for dev: use first active board
-  if (!slug && (host.includes('localhost') || host.includes('127.0.0.1'))) {
+  // 4. Fallback: use first active board (dev, preview deployments, or no custom domain yet)
+  if (!slug && (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('vercel.app'))) {
     const supabase = createServiceClient()
     const { data } = await supabase
       .from('boards')
