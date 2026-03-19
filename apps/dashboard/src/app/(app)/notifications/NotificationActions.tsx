@@ -40,30 +40,28 @@ export function NotificationActions({ notificationId, type, read, actioned }: Pr
     return null
   }
 
+  const needsApproval = type === 'approval_required' || type === 'critical_approval'
+
   return (
     <div className="flex shrink-0 gap-2">
-      {!read && (
-        <button
-          onClick={markRead}
-          disabled={loading}
-          className="btn-ghost text-xs"
-        >
+      {!read && !needsApproval && (
+        <button onClick={markRead} disabled={loading} className="btn-ghost text-xs">
           Mark read
         </button>
       )}
-      {type === 'approval_required' && (
+      {needsApproval && (
         <>
           <button
             onClick={() => handleAction('approved')}
             disabled={loading}
-            className="btn-primary text-xs"
+            className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             Approve
           </button>
           <button
             onClick={() => handleAction('rejected')}
             disabled={loading}
-            className="btn-danger text-xs"
+            className="rounded bg-red-600/80 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-50"
           >
             Reject
           </button>
