@@ -39,6 +39,53 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
     setLoading(true)
     setError(null)
 
+    const promptChanged = form.system_prompt !== agent.system_prompt
+
+    // If prompt changed, archive current version before saving
+    if (promptChanged) {
+      // Get the latest version number
+      const { data: latestVersion } = await supabase
+        .from('prompt_versions')
+        .select('version_number')
+        .eq('agent_id', agent.id)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .single()
+
+      const nextVersion = (latestVersion?.version_number ?? 0) + 1
+
+      // Archive the old prompt
+      if (nextVersion === 1) {
+        // First version change — save the original prompt as v1
+        await supabase.from('prompt_versions').insert({
+          agent_id: agent.id,
+          workspace_id: agent.workspace_id,
+          version_number: 1,
+          system_prompt: agent.system_prompt,
+          change_note: 'Original prompt',
+          status: 'archived',
+          created_by: 'manual',
+        })
+      }
+
+      // Mark all existing versions as archived
+      await supabase
+        .from('prompt_versions')
+        .update({ status: 'archived' })
+        .eq('agent_id', agent.id)
+
+      // Save the new prompt as the active version
+      await supabase.from('prompt_versions').insert({
+        agent_id: agent.id,
+        workspace_id: agent.workspace_id,
+        version_number: nextVersion === 1 ? 2 : nextVersion,
+        system_prompt: form.system_prompt,
+        change_note: 'Manual edit',
+        status: 'active',
+        created_by: 'manual',
+      })
+    }
+
     const { error: err } = await supabase
       .from('agents')
       .update({

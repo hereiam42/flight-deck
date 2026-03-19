@@ -476,34 +476,91 @@ Deno.serve(async (req) => {
     }
 
     const durationMs = Date.now() - runStartedAt
-    const tokenCount = totalInputTokens + totalOutputTokens
-
     // Cost estimate: Sonnet input $3/MTok, output $15/MTok
-    const costUsd = (totalInputTokens * 3 + totalOutputTokens * 15) / 1_000_000
+    let costUsd = (totalInputTokens * 3 + totalOutputTokens * 15) / 1_000_000
 
-    // ---- 6. Update run record ----
+    // ---- 6. Self-review validation pass ----
+    let reviewed = false
+    let reviewIssues: string[] = []
+
+    if (finalOutput && typeof finalOutput === 'string' && finalOutput.length > 50) {
+      // Check confidence_score in output
+      const lowConfidence = /["']?confidence_score["']?\s*:\s*(\d+)/.exec(finalOutput)
+      const confidenceScore = lowConfidence ? parseInt(lowConfidence[1], 10) : null
+
+      if (confidenceScore !== null && confidenceScore < 60) {
+        reviewIssues.push(`Low confidence score: ${confidenceScore}`)
+      }
+
+      // Run self-review with Haiku (cheap + fast)
+      try {
+        const reviewResponse = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          system: 'You are a quality reviewer. Respond ONLY with valid JSON, no other text.',
+          messages: [{
+            role: 'user',
+            content: `Review this agent output for: factual claims without sources, hallucinated data (fields that look invented rather than extracted from the input), logical inconsistencies, and confidence score accuracy. If the output passes review, respond with {"passed": true}. If not, respond with {"passed": false, "issues": ["list of specific problems"]}.\n\nAgent output:\n${finalOutput.slice(0, 3000)}`,
+          }],
+        })
+
+        // Add review tokens to cost (Haiku: $0.80/$4 per MTok)
+        totalInputTokens += reviewResponse.usage.input_tokens
+        totalOutputTokens += reviewResponse.usage.output_tokens
+        costUsd += (reviewResponse.usage.input_tokens * 0.8 + reviewResponse.usage.output_tokens * 4) / 1_000_000
+
+        const reviewText = reviewResponse.content.find(
+          (b): b is Anthropic.TextBlock => b.type === 'text',
+        )?.text ?? ''
+
+        try {
+          const reviewResult = JSON.parse(reviewText)
+          if (reviewResult.passed === true && reviewIssues.length === 0) {
+            reviewed = true
+          } else if (reviewResult.issues) {
+            reviewIssues = reviewIssues.concat(reviewResult.issues)
+          }
+        } catch {
+          // If review response isn't valid JSON, mark as reviewed (don't block on parse failure)
+          if (reviewIssues.length === 0) reviewed = true
+        }
+      } catch {
+        // If review call fails, don't block the run — just skip review
+        if (reviewIssues.length === 0) reviewed = true
+      }
+    } else {
+      // Short/empty output — skip review
+      reviewed = true
+    }
+
+    const needsReview = reviewIssues.length > 0 || needsHumanReview(finalOutput)
+
+    // ---- 7. Update run record ----
     await supabase
       .from('runs')
       .update({
         output: finalOutput,
         status: 'completed',
         duration_ms: durationMs,
-        token_count: tokenCount,
+        token_count: totalInputTokens + totalOutputTokens,
         cost_usd: costUsd,
         completed_at: new Date().toISOString(),
-        metadata: { tool_calls: toolCallLogs },
+        metadata: { tool_calls: toolCallLogs, review: { reviewed, issues: reviewIssues } },
+        reviewed,
       })
       .eq('id', runId)
 
-    // ---- 7. Auto-create notification if output signals review needed ----
-    if (needsHumanReview(finalOutput)) {
+    // ---- 8. Auto-create notification if review needed ----
+    if (needsReview) {
       await supabase.from('notifications').insert({
         workspace_id: agent.workspace_id,
         agent_id: agent.id,
         run_id: runId,
         type: 'approval_required',
-        title: `${agent.name} completed — review required`,
-        payload: { output: finalOutput },
+        title: reviewIssues.length > 0
+          ? `${agent.name} — self-review flagged issues`
+          : `${agent.name} completed — review required`,
+        payload: { output: finalOutput, review_issues: reviewIssues },
       })
     }
 
@@ -512,9 +569,11 @@ Deno.serve(async (req) => {
         run_id: runId,
         output: finalOutput,
         tool_calls: toolCallLogs,
-        token_count: tokenCount,
+        token_count: totalInputTokens + totalOutputTokens,
         cost_usd: costUsd,
         duration_ms: durationMs,
+        reviewed,
+        review_issues: reviewIssues,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

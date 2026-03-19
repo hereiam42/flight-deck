@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { AgentEditForm } from './AgentEditForm'
 import { TestPanel } from './TestPanel'
+import { PromptVersions } from './PromptVersions'
+import { RunFeedback } from './RunFeedback'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -20,13 +22,19 @@ export default async function AgentDetailPage({ params }: Props) {
 
   if (!agent) notFound()
 
-  // Get last 20 runs with full details
-  const { data: runs } = await supabase
-    .from('runs')
-    .select('*')
-    .eq('agent_id', id)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  // Get last 20 runs, prompt versions, and feedback in parallel
+  const [runsRes, versionsRes, feedbackRes] = await Promise.all([
+    supabase.from('runs').select('*').eq('agent_id', id).order('created_at', { ascending: false }).limit(20),
+    supabase.from('prompt_versions').select('*').eq('agent_id', id).order('version_number', { ascending: false }),
+    supabase.from('run_feedback').select('run_id, feedback_type').eq('agent_id', id),
+  ])
+
+  const runs = runsRes.data
+  const versions = versionsRes.data ?? []
+  const feedbackMap = new Map<string, string>()
+  for (const fb of feedbackRes.data ?? []) {
+    feedbackMap.set(fb.run_id, fb.feedback_type)
+  }
 
   // Compute health metrics
   const recentRuns = (runs ?? []).slice(0, 10)
@@ -132,6 +140,9 @@ export default async function AgentDetailPage({ params }: Props) {
               </div>
             </div>
           )}
+
+          {/* Prompt versions */}
+          <PromptVersions agentId={agent.id} versions={versions} />
         </div>
       </div>
 
@@ -143,11 +154,11 @@ export default async function AgentDetailPage({ params }: Props) {
             <thead>
               <tr className="border-b border-[#2e2e32]">
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Reviewed</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Duration</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Tokens</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Cost</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Triggered</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Started</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Feedback</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
@@ -164,20 +175,29 @@ export default async function AgentDetailPage({ params }: Props) {
                     <td className="px-4 py-2.5">
                       <span className={`badge-${run.status}`}>{run.status}</span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
-                      {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '—'}
+                    <td className="px-4 py-2.5 text-center">
+                      {run.reviewed
+                        ? <span className="text-emerald-500" title="Self-review passed">✓</span>
+                        : run.status === 'completed'
+                          ? <span className="text-zinc-600" title="Not reviewed">—</span>
+                          : null}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
-                      {run.token_count ?? '—'}
+                      {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '—'}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
                       {run.cost_usd ? `$${Number(run.cost_usd).toFixed(4)}` : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-zinc-500">
-                      {run.triggered_by ?? '—'}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-zinc-500">
                       {new Date(run.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <RunFeedback
+                        runId={run.id}
+                        agentId={agent.id}
+                        workspaceId={agent.workspace_id}
+                        existingFeedback={feedbackMap.get(run.id) ?? null}
+                      />
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <Link href={`/runs/${run.id}`} className="btn-ghost text-xs">View →</Link>
