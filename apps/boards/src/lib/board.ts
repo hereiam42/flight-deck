@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { createServiceClient } from './supabase'
 import { notFound } from 'next/navigation'
 
-// Domain → slug mapping for production
+// Domain → slug mapping for production custom domains
 const DOMAIN_MAP: Record<string, string> = {
   'nisekojobs.com': 'niseko-winter',
   'www.nisekojobs.com': 'niseko-winter',
@@ -13,28 +13,22 @@ export async function resolveBoard() {
   const headerList = await headers()
   const host = headerList.get('host') ?? ''
 
-  // 1. Check domain map
+  // 1. Check domain map (custom domains)
   let slug: string | undefined = DOMAIN_MAP[host]
 
-  // 2. Dev: check ?board= query param (for local testing)
+  // 2. Check ?board= query param
   if (!slug) {
     try {
-      const url = headerList.get('x-url') ?? headerList.get('x-forwarded-url') ?? ''
-      const params = new URL(url || `http://${host}`).searchParams
-      slug = params.get('board') ?? undefined
-    } catch { /* ignore URL parse errors */ }
+      const url = headerList.get('x-url') ?? ''
+      if (url) {
+        const params = new URL(url).searchParams
+        slug = params.get('board') ?? undefined
+      }
+    } catch { /* ignore */ }
   }
 
-  // 3. Dev: check subdomain (e.g. niseko-winter.localhost:3001)
-  if (!slug && host.includes('.')) {
-    const subdomain = host.split('.')[0]
-    if (subdomain !== 'www' && subdomain !== 'localhost') {
-      slug = subdomain
-    }
-  }
-
-  // 4. Fallback: use first active board (dev, preview deployments, or no custom domain yet)
-  if (!slug && (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('vercel.app'))) {
+  // 3. Fallback: use first active board (vercel.app previews, localhost)
+  if (!slug) {
     const supabase = createServiceClient()
     const { data } = await supabase
       .from('boards')
