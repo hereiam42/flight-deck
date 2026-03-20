@@ -540,6 +540,26 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // ---- SECURITY: Authenticate request ----
+  // Accept either the agent secret header (for cron/internal) or a valid Supabase auth token (for dashboard)
+  const agentSecret = Deno.env.get('AGENT_SECRET')
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const secretHeader = req.headers.get('x-agent-secret')
+
+  if (agentSecret && secretHeader !== agentSecret) {
+    // No valid agent secret — check if the request has a valid Supabase service role or anon key
+    const token = authHeader.replace('Bearer ', '')
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+
+    if (token !== serviceKey && token !== anonKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
   const runStartedAt = Date.now()
   let runId: string | null = null
 
