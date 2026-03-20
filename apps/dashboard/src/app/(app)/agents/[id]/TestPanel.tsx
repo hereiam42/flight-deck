@@ -18,10 +18,13 @@ interface RunResult {
   token_count: number
   cost_usd: number
   duration_ms: number
+  dry_run?: boolean
+  guardrails?: { writes: number; searches: number; notifications: number }
 }
 
 export function TestPanel({ agentId }: { agentId: string }) {
   const [input, setInput] = useState('')
+  const [dryRun, setDryRun] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<RunResult | null>(null)
@@ -56,6 +59,7 @@ export function TestPanel({ agentId }: { agentId: string }) {
             agent_id: agentId,
             input: input || 'Hello, are you working?',
             triggered_by: 'test_panel',
+            dry_run: dryRun,
           }),
         },
       )
@@ -83,6 +87,16 @@ export function TestPanel({ agentId }: { agentId: string }) {
           placeholder="Paste test input here... (text or JSON)"
         />
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dryRun}
+              onChange={(e) => setDryRun(e.target.checked)}
+              className="rounded border-zinc-600 bg-zinc-800 text-indigo-500 focus:ring-indigo-500/30"
+            />
+            Dry run
+            <span className="text-zinc-600">(log writes, don&apos;t execute)</span>
+          </label>
           <button
             onClick={handleRun}
             disabled={loading}
@@ -104,7 +118,9 @@ export function TestPanel({ agentId }: { agentId: string }) {
           </button>
           {result && (
             <span className="text-xs text-zinc-500">
+              {result.dry_run && <span className="mr-1.5 rounded bg-yellow-900/30 px-1.5 py-0.5 text-yellow-400">DRY RUN</span>}
               {(result.duration_ms / 1000).toFixed(1)}s · {result.token_count} tokens · ${result.cost_usd.toFixed(4)}
+              {result.guardrails && ` · ${result.guardrails.writes}W ${result.guardrails.searches}S ${result.guardrails.notifications}N`}
             </span>
           )}
         </div>

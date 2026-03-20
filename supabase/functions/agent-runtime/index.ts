@@ -23,6 +23,142 @@ interface ToolCallLog {
   tier: number
 }
 
+// ---- Guardrail: Rate limit counters ----
+
+interface RateLimits {
+  database_writes: number
+  web_searches: number
+  notifications: number
+}
+
+const RATE_LIMITS = {
+  database_writes: 100,
+  web_searches: 50,
+  notifications: 10,
+}
+
+function checkRateLimit(counters: RateLimits, type: keyof RateLimits): void {
+  if (counters[type] >= RATE_LIMITS[type]) {
+    throw new Error(
+      `Rate limit exceeded: ${type} (${counters[type]}/${RATE_LIMITS[type]}). ` +
+      'Run stopped to prevent runaway operations.'
+    )
+  }
+  counters[type]++
+}
+
+// ---- Guardrail: Protected tables and fields ----
+
+const PROTECTED_TABLES = new Set(['candidates', 'employers', 'jobs'])
+
+// Agents can NEVER delete from these tables
+// Agents can NEVER update email on existing records in these tables
+// Agents can NEVER bulk-update more than 50 records in a single run
+
+const IMMUTABLE_FIELDS: Record<string, Set<string>> = {
+  candidates: new Set(['email']),
+  employers: new Set(['contact_email']),
+}
+
+// ---- Guardrail: Input validation ----
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const SQL_INJECTION_PATTERNS = [
+  /;\s*DROP\s/i,
+  /;\s*DELETE\s/i,
+  /;\s*UPDATE\s.*SET\s/i,
+  /;\s*INSERT\s/i,
+  /UNION\s+SELECT/i,
+  /--\s/,
+  /\/\*.*\*\//,
+  /'\s*OR\s+'1'\s*=\s*'1/i,
+  /'\s*OR\s+1\s*=\s*1/i,
+]
+
+function validateWriteData(
+  table: string,
+  data: Record<string, unknown>,
+  operation: string,
+  workspaceId: string,
+): string[] {
+  const errors: string[] = []
+
+  // Workspace must match
+  if (data.workspace_id && data.workspace_id !== workspaceId) {
+    errors.push(`Cross-workspace write blocked: data.workspace_id (${data.workspace_id}) !== agent workspace (${workspaceId})`)
+  }
+
+  // Check for SQL injection in all string fields
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'string') {
+      for (const pattern of SQL_INJECTION_PATTERNS) {
+        if (pattern.test(value)) {
+          errors.push(`Suspicious pattern in field "${key}": possible SQL injection`)
+          break
+        }
+      }
+    }
+  }
+
+  // Validate email fields
+  for (const [key, value] of Object.entries(data)) {
+    if (key.includes('email') && typeof value === 'string' && value.length > 0) {
+      if (!EMAIL_REGEX.test(value)) {
+        errors.push(`Invalid email format in field "${key}": ${value}`)
+      }
+    }
+  }
+
+  // Prevent email updates on protected tables
+  if (operation === 'update' && PROTECTED_TABLES.has(table)) {
+    const immutable = IMMUTABLE_FIELDS[table]
+    if (immutable) {
+      for (const field of immutable) {
+        if (field in data) {
+          errors.push(`Cannot update immutable field "${field}" on ${table}`)
+        }
+      }
+    }
+  }
+
+  // Type validation: dates should look like dates, numbers like numbers
+  for (const [key, value] of Object.entries(data)) {
+    if (key.includes('_at') || key.includes('_date') || key === 'available_from' || key === 'available_to') {
+      if (value !== null && typeof value === 'string') {
+        const d = new Date(value)
+        if (isNaN(d.getTime())) {
+          errors.push(`Invalid date in field "${key}": ${value}`)
+        }
+      }
+    }
+  }
+
+  return errors
+}
+
+// ---- Guardrail: Board validation cache ----
+
+const validBoardIds = new Set<string>()
+
+// deno-lint-ignore no-explicit-any
+async function validateBoardId(boardId: string, supabase: any, workspaceId: string): Promise<boolean> {
+  if (validBoardIds.has(boardId)) return true
+
+  const { data } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('id', boardId)
+    .eq('workspace_id', workspaceId)
+    .single()
+
+  if (data) {
+    validBoardIds.add(boardId)
+    return true
+  }
+  return false
+}
+
 // ---- Input schemas per tool type ----
 
 function buildAnthropicTools(toolDefs: ToolDef[]): Anthropic.Tool[] {
@@ -183,6 +319,11 @@ async function executeDatabaseWrite(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   workspaceId: string,
+  agentId: string,
+  runId: string,
+  counters: RateLimits,
+  dryRun: boolean,
+  writeCountForRun: { count: number },
 ): Promise<unknown> {
   const table = config.table as string
   if (!table) throw new Error('database_write tool missing table in config')
@@ -191,21 +332,90 @@ async function executeDatabaseWrite(
   const data = input.data as Record<string, unknown>
   if (!data) throw new Error('database_write requires data field')
 
+  // ---- GUARDRAIL: Rate limit ----
+  checkRateLimit(counters, 'database_writes')
+
+  // ---- GUARDRAIL: Prevent DELETE operations (hardcoded) ----
+  if (operation === 'delete') {
+    throw new Error(`DELETE operations are forbidden. Agents cannot delete records.`)
+  }
+
   // Always inject workspace_id
   data.workspace_id = workspaceId
 
+  // ---- GUARDRAIL: Validate board_id if present ----
+  if (data.board_id && typeof data.board_id === 'string') {
+    const valid = await validateBoardId(data.board_id, supabase, workspaceId)
+    if (!valid) {
+      throw new Error(`Invalid board_id: ${data.board_id} does not exist in workspace`)
+    }
+  }
+
+  // ---- GUARDRAIL: Validate all write data ----
+  const validationErrors = validateWriteData(table, data, operation, workspaceId)
+  if (validationErrors.length > 0) {
+    throw new Error(`Write validation failed:\n${validationErrors.join('\n')}`)
+  }
+
+  // ---- GUARDRAIL: Bulk update limit (50 records per run) ----
+  if (operation === 'update') {
+    writeCountForRun.count++
+    if (writeCountForRun.count > 50) {
+      throw new Error(
+        `Bulk update limit exceeded: agent has updated ${writeCountForRun.count} records this run (max 50). ` +
+        'Run stopped to prevent mass data changes.'
+      )
+    }
+  }
+
+  // ---- GUARDRAIL: Capture before-state for activity log ----
+  let beforeData: unknown = null
+  const match = input.match as Record<string, unknown> | undefined
+
+  if ((operation === 'update' || operation === 'upsert') && match) {
+    let beforeQuery = supabase.from(table).select('*').eq('workspace_id', workspaceId)
+    for (const [key, value] of Object.entries(match)) {
+      beforeQuery = beforeQuery.eq(key, value)
+    }
+    const { data: existing } = await beforeQuery.limit(5)
+    beforeData = existing
+  }
+
+  // ---- GUARDRAIL: Dry run mode ----
+  if (dryRun) {
+    // Log what WOULD have been written
+    await supabase.from('activity_log').insert({
+      workspace_id: workspaceId,
+      run_id: runId,
+      agent_id: agentId,
+      table_name: table,
+      operation,
+      before_data: beforeData,
+      after_data: data,
+      dry_run: true,
+    })
+
+    return {
+      dry_run: true,
+      operation,
+      table,
+      data,
+      message: `DRY RUN: Would have ${operation}ed into ${table}`,
+    }
+  }
+
+  // ---- Execute the actual write ----
+  let result: unknown
+
   if (operation === 'insert') {
-    const { data: result, error } = await supabase
+    const { data: insertResult, error } = await supabase
       .from(table)
       .insert(data)
       .select()
       .single()
     if (error) throw new Error(`database_write insert error: ${error.message}`)
-    return result
-  }
-
-  if (operation === 'update') {
-    const match = input.match as Record<string, unknown>
+    result = insertResult
+  } else if (operation === 'update') {
     if (!match) throw new Error('database_write update requires match field')
 
     let query = supabase.from(table).update(data)
@@ -213,25 +423,42 @@ async function executeDatabaseWrite(
     for (const [key, value] of Object.entries(match)) {
       query = query.eq(key, value)
     }
-    const { data: result, error } = await query.select()
+    const { data: updateResult, error } = await query.select()
     if (error) throw new Error(`database_write update error: ${error.message}`)
-    return result
-  }
-
-  if (operation === 'upsert') {
+    result = updateResult
+  } else if (operation === 'upsert') {
     const conflictCols = config.conflict as string[] | undefined
     const opts: Record<string, unknown> = {}
     if (conflictCols) opts.onConflict = conflictCols.join(',')
 
-    const { data: result, error } = await supabase
+    const { data: upsertResult, error } = await supabase
       .from(table)
       .upsert(data, opts)
       .select()
     if (error) throw new Error(`database_write upsert error: ${error.message}`)
-    return result
+    result = upsertResult
+  } else {
+    throw new Error(`Unknown database_write operation: ${operation}`)
   }
 
-  throw new Error(`Unknown database_write operation: ${operation}`)
+  // ---- Activity log: record what was written ----
+  const recordId = Array.isArray(result)
+    ? result.map((r: Record<string, unknown>) => r.id).join(',')
+    : (result as Record<string, unknown>)?.id as string ?? null
+
+  await supabase.from('activity_log').insert({
+    workspace_id: workspaceId,
+    run_id: runId,
+    agent_id: agentId,
+    table_name: table,
+    operation,
+    record_id: recordId,
+    before_data: beforeData,
+    after_data: result,
+    dry_run: false,
+  })
+
+  return result
 }
 
 async function executeSendNotification(
@@ -242,7 +469,11 @@ async function executeSendNotification(
   workspaceId: string,
   agentId: string,
   runId: string,
+  counters: RateLimits,
 ): Promise<unknown> {
+  // ---- GUARDRAIL: Rate limit ----
+  checkRateLimit(counters, 'notifications')
+
   const notifType = (input.type as string) ?? (config.type as string) ?? 'info'
 
   const { data, error } = await supabase
@@ -264,7 +495,11 @@ async function executeSendNotification(
 
 async function executeWebSearch(
   input: Record<string, unknown>,
+  counters: RateLimits,
 ): Promise<unknown> {
+  // ---- GUARDRAIL: Rate limit ----
+  checkRateLimit(counters, 'web_searches')
+
   const query = input.query as string
   if (!query) throw new Error('web_search requires a query')
 
@@ -319,7 +554,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { agent_id, input, triggered_by = 'manual', workflow_id } = body
+    const { agent_id, input, triggered_by = 'manual', workflow_id, dry_run = false } = body
 
     if (!agent_id) {
       return new Response(JSON.stringify({ error: 'agent_id is required' }), {
@@ -359,6 +594,7 @@ Deno.serve(async (req) => {
         input: input ?? {},
         status: 'running',
         triggered_by,
+        metadata: { dry_run },
       })
       .select()
       .single()
@@ -368,12 +604,16 @@ Deno.serve(async (req) => {
     }
     runId = run.id
 
-    // ---- 3. Resolve tool definitions from agent config ----
+    // ---- 3. Initialize guardrail counters ----
+    const counters: RateLimits = { database_writes: 0, web_searches: 0, notifications: 0 }
+    const writeCountForRun = { count: 0 }
+
+    // ---- 4. Resolve tool definitions from agent config ----
     const toolDefs: ToolDef[] = Array.isArray(agent.tools) ? agent.tools : []
     const anthropicTools = buildAnthropicTools(toolDefs)
     const toolMap = new Map<string, ToolDef>(toolDefs.map((t) => [t.name, t]))
 
-    // ---- 4. Build initial messages ----
+    // ---- 5. Build initial messages ----
     const userContent = typeof input === 'string'
       ? input
       : JSON.stringify(input ?? {})
@@ -382,7 +622,7 @@ Deno.serve(async (req) => {
       { role: 'user', content: userContent },
     ]
 
-    // ---- 5. Agentic loop ----
+    // ---- 6. Agentic loop ----
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalOutput: unknown = null
@@ -433,15 +673,19 @@ Deno.serve(async (req) => {
                   result = await executeDatabaseRead(inp, toolDef.config, supabase, agent.workspace_id)
                   break
                 case 'database_write':
-                  result = await executeDatabaseWrite(inp, toolDef.config, supabase, agent.workspace_id)
+                  result = await executeDatabaseWrite(
+                    inp, toolDef.config, supabase, agent.workspace_id,
+                    agent.id, runId!, counters, dry_run, writeCountForRun,
+                  )
                   break
                 case 'send_notification':
                   result = await executeSendNotification(
                     inp, toolDef.config, supabase, agent.workspace_id, agent.id, runId!,
+                    counters,
                   )
                   break
                 case 'web_search':
-                  result = await executeWebSearch(inp)
+                  result = await executeWebSearch(inp, counters)
                   break
                 default:
                   result = { error: `Unknown tool type: ${toolDef.type}` }
@@ -479,7 +723,7 @@ Deno.serve(async (req) => {
     // Cost estimate: Sonnet input $3/MTok, output $15/MTok
     let costUsd = (totalInputTokens * 3 + totalOutputTokens * 15) / 1_000_000
 
-    // ---- 6. Self-review validation pass ----
+    // ---- 7. Self-review validation pass ----
     let reviewed = false
     let reviewIssues: string[] = []
 
@@ -535,7 +779,23 @@ Deno.serve(async (req) => {
 
     const needsReview = reviewIssues.length > 0 || needsHumanReview(finalOutput)
 
-    // ---- 7. Update run record ----
+    // ---- 8. Anomaly detection: flag runs with > 20 writes ----
+    const totalWrites = counters.database_writes
+    if (totalWrites > 20) {
+      await supabase.from('notifications').insert({
+        workspace_id: agent.workspace_id,
+        agent_id: agent.id,
+        run_id: runId,
+        type: 'approval_required',
+        title: `${agent.name} — high write volume: ${totalWrites} database writes`,
+        payload: {
+          message: `This run made ${totalWrites} database writes, which exceeds the anomaly threshold of 20.`,
+          write_count: totalWrites,
+        },
+      })
+    }
+
+    // ---- 9. Update run record ----
     await supabase
       .from('runs')
       .update({
@@ -545,12 +805,21 @@ Deno.serve(async (req) => {
         token_count: totalInputTokens + totalOutputTokens,
         cost_usd: costUsd,
         completed_at: new Date().toISOString(),
-        metadata: { tool_calls: toolCallLogs, review: { reviewed, issues: reviewIssues } },
+        metadata: {
+          tool_calls: toolCallLogs,
+          review: { reviewed, issues: reviewIssues },
+          guardrails: {
+            dry_run,
+            writes: counters.database_writes,
+            searches: counters.web_searches,
+            notifications: counters.notifications,
+          },
+        },
         reviewed,
       })
       .eq('id', runId)
 
-    // ---- 8. Auto-create notification if review needed ----
+    // ---- 10. Auto-create notification if review needed ----
     if (needsReview) {
       await supabase.from('notifications').insert({
         workspace_id: agent.workspace_id,
@@ -574,6 +843,12 @@ Deno.serve(async (req) => {
         duration_ms: durationMs,
         reviewed,
         review_issues: reviewIssues,
+        dry_run,
+        guardrails: {
+          writes: counters.database_writes,
+          searches: counters.web_searches,
+          notifications: counters.notifications,
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

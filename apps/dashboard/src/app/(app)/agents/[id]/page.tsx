@@ -5,6 +5,7 @@ import { AgentEditForm } from './AgentEditForm'
 import { TestPanel } from './TestPanel'
 import { PromptVersions } from './PromptVersions'
 import { RunFeedback } from './RunFeedback'
+import { PauseButton } from './PauseButton'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -71,6 +72,7 @@ export default async function AgentDetailPage({ params }: Props) {
             <p className="mt-0.5 text-sm text-zinc-500">{agent.description}</p>
           )}
         </div>
+        <PauseButton agentId={agent.id} currentStatus={agent.status} />
       </div>
 
       {/* Stats */}

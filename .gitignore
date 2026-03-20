@@ -17,6 +17,8 @@ out/
 # supabase
 supabase/.branches
 supabase/.temp
+supabase/migration-backup/
+supabase/migrate.mjs
 
 # testing
 coverage/
