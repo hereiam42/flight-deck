@@ -20,8 +20,8 @@ export default async function ActivityLogPage({
   const page = parseInt(params.page ?? '1', 10)
   const offset = (page - 1) * perPage
 
-  // Build query
-  let query = supabase
+  // Build query — activity_log table exists but isn't in generated types yet
+  let query = (supabase as any)
     .from('activity_log')
     .select('*, agents(name)', { count: 'exact' })
     .eq('workspace_id', workspaceId)
@@ -36,7 +36,7 @@ export default async function ActivityLogPage({
     supabase.from('agents').select('id, name').eq('workspace_id', workspaceId),
   ])
 
-  const logs = logRes.data ?? []
+  const logs: any[] = logRes.data ?? []
   const totalCount = logRes.count ?? 0
   const agents = agentsRes.data ?? []
   const totalPages = Math.ceil(totalCount / perPage)
