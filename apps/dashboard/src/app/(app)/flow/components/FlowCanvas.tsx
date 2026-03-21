@@ -6,14 +6,24 @@ import { CANVAS_BG } from '../config/theme'
 import { CorridorRenderer } from './CorridorRenderer'
 import { NodeRenderer } from './NodeRenderer'
 import type { LensId } from '../config/jurisdictions'
+import type { AgentData } from '../hooks/useAgents'
+import type { BoardData } from '../hooks/useBoards'
+import type { ReadinessData } from '../hooks/useReadiness'
 
 interface FlowCanvasProps {
   lens: LensId
   selectedNode: string | null
   onNodeClick: (nodeId: string) => void
+  liveAgents: AgentData[]
+  agentPositions: Record<string, { x: number; y: number }>
+  boardsByJurisdiction: Record<string, BoardData[]>
+  readiness: ReadinessData
 }
 
-export function FlowCanvas({ lens, selectedNode, onNodeClick }: FlowCanvasProps) {
+export function FlowCanvas({
+  lens, selectedNode, onNodeClick,
+  liveAgents, agentPositions, boardsByJurisdiction, readiness,
+}: FlowCanvasProps) {
   const [hoveredCorridor, setHoveredCorridor] = useState<string | null>(null)
 
   return (
@@ -43,6 +53,10 @@ export function FlowCanvas({ lens, selectedNode, onNodeClick }: FlowCanvasProps)
           lens={lens}
           selectedNode={selectedNode}
           onNodeClick={onNodeClick}
+          liveAgents={liveAgents}
+          agentPositions={agentPositions}
+          boardsByJurisdiction={boardsByJurisdiction}
+          readiness={readiness}
         />
       </svg>
     </div>

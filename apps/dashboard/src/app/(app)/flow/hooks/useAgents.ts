@@ -10,6 +10,7 @@ export interface AgentData {
   description: string | null
   dbStatus: string // raw status from agents table (active/paused/archived)
   health: AgentStatus // derived: healthy/warning/error/idle
+  tier: number // 1=autonomous, 2=approval required, 3=double confirmation
   runs7d: number
   successRate: number
   lastRun: string | null
@@ -49,7 +50,7 @@ export function useAgents(workspaceId: string | null) {
       // Fetch agents
       const { data: agentRows } = await supabase
         .from('agents')
-        .select('id, name, description, status')
+        .select('id, name, description, status, tier')
         .eq('workspace_id', workspaceId!)
 
       if (!agentRows || agentRows.length === 0) {
@@ -96,6 +97,7 @@ export function useAgents(workspaceId: string | null) {
           description: a.description,
           dbStatus: a.status,
           health: deriveHealth(a.status, total, successRate),
+          tier: a.tier ?? 1,
           runs7d: total,
           successRate,
           lastRun: lastRunDate ? timeAgo(lastRunDate) : null,

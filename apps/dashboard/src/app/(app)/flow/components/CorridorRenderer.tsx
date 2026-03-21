@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { NODES, CORRIDORS } from '../config/jurisdictions'
+import { CORRIDORS } from '../config/jurisdictions'
+import { NODE_POSITIONS } from '../config/positions'
 import { COMPLEXITY_COLORS } from '../config/theme'
-import type { Corridor, LensId } from '../config/jurisdictions'
+import type { LensId } from '../config/jurisdictions'
 
 function useTick(ms: number) {
   const [t, setT] = useState(0)
@@ -39,24 +40,8 @@ function CorridorLine({ from, to, color, thickness = 1.5, hovered }: CorridorLin
 
   return (
     <g>
-      <path
-        d={d}
-        fill="none"
-        stroke={color}
-        strokeWidth={w}
-        opacity={hovered ? 0.5 : 0.12}
-        strokeLinecap="round"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke={color}
-        strokeWidth={w}
-        opacity={hovered ? 0.9 : 0.4}
-        strokeLinecap="round"
-        strokeDasharray="6 18"
-        strokeDashoffset={-(t * 0.8) % 24}
-      />
+      <path d={d} fill="none" stroke={color} strokeWidth={w} opacity={hovered ? 0.5 : 0.12} strokeLinecap="round" />
+      <path d={d} fill="none" stroke={color} strokeWidth={w} opacity={hovered ? 0.9 : 0.4} strokeLinecap="round" strokeDasharray="6 18" strokeDashoffset={-(t * 0.8) % 24} />
     </g>
   )
 }
@@ -73,28 +58,18 @@ export function CorridorRenderer({ lens, hoveredCorridor, onCorridorHover }: Cor
   return (
     <g>
       {CORRIDORS.map((c) => {
-        const fromNode = NODES[c.from]
-        const toNode = NODES[c.to]
-        if (!fromNode || !toNode) return null
+        const fromPos = NODE_POSITIONS[c.from]
+        const toPos = NODE_POSITIONS[c.to]
+        if (!fromPos || !toPos) return null
         const color = COMPLEXITY_COLORS[c.cx]
         const isHovered = hoveredCorridor === c.label
 
         return (
           <g key={c.label}>
-            <CorridorLine
-              from={{ x: fromNode.x, y: fromNode.y }}
-              to={{ x: toNode.x, y: toNode.y }}
-              color={color}
-              hovered={isHovered}
-            />
-            {/* Invisible wider hit area for hover */}
+            <CorridorLine from={fromPos} to={toPos} color={color} hovered={isHovered} />
             <line
-              x1={fromNode.x}
-              y1={fromNode.y}
-              x2={toNode.x}
-              y2={toNode.y}
-              stroke="transparent"
-              strokeWidth={16}
+              x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
+              stroke="transparent" strokeWidth={16}
               onMouseEnter={() => onCorridorHover(c.label)}
               onMouseLeave={() => onCorridorHover(null)}
               style={{ cursor: 'pointer' }}
@@ -107,30 +82,17 @@ export function CorridorRenderer({ lens, hoveredCorridor, onCorridorHover }: Cor
       {hoveredCorridor && (() => {
         const c = CORRIDORS.find((co) => co.label === hoveredCorridor)
         if (!c) return null
-        const fromNode = NODES[c.from]
-        const toNode = NODES[c.to]
-        if (!fromNode || !toNode) return null
-        const tx = (fromNode.x + toNode.x) / 2
-        const ty = (fromNode.y + toNode.y) / 2 - 18
+        const fromPos = NODE_POSITIONS[c.from]
+        const toPos = NODE_POSITIONS[c.to]
+        if (!fromPos || !toPos) return null
+        const tx = (fromPos.x + toPos.x) / 2
+        const ty = (fromPos.y + toPos.y) / 2 - 18
 
         return (
           <g>
-            <rect
-              x={tx - 80}
-              y={ty - 14}
-              width={160}
-              height={32}
-              rx={6}
-              fill="#0F172A"
-              stroke="#1E293B"
-              strokeWidth={1}
-            />
-            <text x={tx} y={ty + 1} textAnchor="middle" fill="#F8FAFC" fontSize={10} fontFamily="'DM Sans', sans-serif">
-              {c.label}
-            </text>
-            <text x={tx} y={ty + 13} textAnchor="middle" fill="#94A3B8" fontSize={9} fontFamily="'DM Sans', sans-serif">
-              {c.mech}
-            </text>
+            <rect x={tx - 80} y={ty - 14} width={160} height={32} rx={6} fill="#0F172A" stroke="#1E293B" strokeWidth={1} />
+            <text x={tx} y={ty + 1} textAnchor="middle" fill="#F8FAFC" fontSize={10} fontFamily="'DM Sans', sans-serif">{c.label}</text>
+            <text x={tx} y={ty + 13} textAnchor="middle" fill="#94A3B8" fontSize={9} fontFamily="'DM Sans', sans-serif">{c.mech}</text>
           </g>
         )
       })()}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { FlowCanvas } from './components/FlowCanvas'
 import { LensSwitcher } from './components/LensSwitcher'
 import { SidePanel } from './components/SidePanel'
@@ -8,7 +8,12 @@ import { BottomBar } from './components/BottomBar'
 import { useBoards } from './hooks/useBoards'
 import { useCandidates } from './hooks/useCandidates'
 import { useAgents } from './hooks/useAgents'
+import { useReadiness } from './hooks/useReadiness'
+import { useBoardTasks } from './hooks/useBoardTasks'
 import { useRealtime } from './hooks/useRealtime'
+import { JURISDICTIONS } from './config/jurisdictions'
+import { computeAgentPositions } from './config/agentLayout'
+import { groupBoardsByJurisdiction } from './lib/jurisdictionMapping'
 import { SURFACE, BORDER } from './config/theme'
 import type { LensId } from './config/jurisdictions'
 
@@ -20,22 +25,36 @@ export function FlowView({ workspaceId }: FlowViewProps) {
   const [lens, setLens] = useState<LensId>('jurisdiction')
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
 
-  // Live data hooks — fall back to mock config data when no workspace
+  // Live data hooks
   const { boards, loading: boardsLoading } = useBoards(workspaceId)
   const { stats: candidateStats, loading: candidatesLoading } = useCandidates(workspaceId)
   const { agents: liveAgents, loading: agentsLoading } = useAgents(workspaceId)
+  const { readiness, loading: readinessLoading, refetch: refetchReadiness } = useReadiness(workspaceId)
+  const { tasksByBoardId, loading: tasksLoading, refetch: refetchTasks } = useBoardTasks(workspaceId)
 
   // Realtime subscriptions — trigger refetch on inserts
-  // For now these just log; we'll wire up refetch callbacks once we confirm data flows
   useRealtime({
     workspaceId,
-    onCandidateInsert: () => {
-      // Will trigger useCandidates refetch in next iteration
-    },
-    onRunInsert: () => {
-      // Will trigger useAgents refetch in next iteration
+    onCandidateInsert: () => {},
+    onRunInsert: () => {},
+    onBoardTaskChange: () => {
+      refetchReadiness()
+      refetchTasks()
     },
   })
+
+  // Computed derived data
+  const boardsByJurisdiction = useMemo(
+    () => groupBoardsByJurisdiction(boards, JURISDICTIONS),
+    [boards],
+  )
+
+  const agentPositions = useMemo(
+    () => computeAgentPositions(liveAgents),
+    [liveAgents],
+  )
+
+  const isLoading = boardsLoading || agentsLoading || readinessLoading || tasksLoading
 
   const handleNodeClick = useCallback((nodeId: string) => {
     setSelectedNode((prev) => (prev === nodeId ? null : nodeId))
@@ -51,7 +70,6 @@ export function FlowView({ workspaceId }: FlowViewProps) {
   }, [])
 
   return (
-    // Negative margin cancels the parent layout's p-6 so canvas is edge-to-edge
     <div className="-m-6 flex h-[calc(100%+3rem)] flex-col">
       {/* Top bar: lens switcher */}
       <div
@@ -60,7 +78,7 @@ export function FlowView({ workspaceId }: FlowViewProps) {
       >
         <LensSwitcher activeLens={lens} onLensChange={handleLensChange} />
         <div className="flex items-center gap-3">
-          {(boardsLoading || candidatesLoading || agentsLoading) && (
+          {isLoading && (
             <span className="text-[10px]" style={{ color: '#64748B', fontFamily: "'JetBrains Mono', monospace" }}>
               syncing...
             </span>
@@ -76,13 +94,22 @@ export function FlowView({ workspaceId }: FlowViewProps) {
 
       {/* Canvas + side panel */}
       <div className="relative flex-1 overflow-hidden">
-        <FlowCanvas lens={lens} selectedNode={selectedNode} onNodeClick={handleNodeClick} />
+        <FlowCanvas
+          lens={lens}
+          selectedNode={selectedNode}
+          onNodeClick={handleNodeClick}
+          liveAgents={liveAgents}
+          agentPositions={agentPositions}
+          boardsByJurisdiction={boardsByJurisdiction}
+          readiness={readiness}
+        />
         <SidePanel
           lens={lens}
           selectedNode={selectedNode}
           onClose={handleClosePanel}
-          liveBoards={boards}
-          candidateStats={candidateStats}
+          boardsByJurisdiction={boardsByJurisdiction}
+          readiness={readiness}
+          tasksByBoardId={tasksByBoardId}
           liveAgents={liveAgents}
         />
       </div>
