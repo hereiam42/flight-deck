@@ -1,0 +1,58 @@
+import type { Program } from '../types/atlas'
+
+export const PROGRAMS: Program[] = [
+  {
+    id: 'bwj2026',
+    name: 'Beauty World Japan 2026',
+    date: 'May 2026',
+    nodeId: 'japan',
+    segment: 'wellness',
+    status: 'active',
+    detail: 'BWJ東京ビッグサイト出展。NAMA FIJIブース運営、バイヤー商談会。',
+  },
+  {
+    id: 'cidesco-tour',
+    name: 'CIDESCO World Congress Tour',
+    date: 'Aug 2026',
+    nodeId: 'fiji',
+    segment: 'tourism',
+    status: 'planning',
+    detail: 'CIDESCO世界大会参加ツアー企画。フィジー現地体験プログラム連携。',
+  },
+  {
+    id: 'metaverse',
+    name: 'Metaverse Trade Show',
+    date: 'Jan 2027',
+    nodeId: 'japan',
+    segment: 'estate',
+    status: 'pipeline',
+    detail: 'バーチャルショールーム出展。DtoCブランドのメタバース展開。',
+  },
+  {
+    id: 'rakuten',
+    name: 'NAMA FIJI Rakuten Launch',
+    date: 'Q2 2026',
+    nodeId: 'japan',
+    segment: 'wellness',
+    status: 'active',
+    detail: '楽天市場NAMA FIJIストア開設。初回ロット販売開始。',
+  },
+  {
+    id: 'fiji-ai',
+    name: 'Fiji Government AI POC',
+    date: '2026',
+    nodeId: 'fiji',
+    segment: 'govai',
+    status: 'pipeline',
+    detail: 'フィジー政府向けAI概念実証。行政効率化パイロット。',
+  },
+  {
+    id: 'yasawa-pitch',
+    name: 'Yasawa Investment Pitch',
+    date: 'Q2 2026',
+    nodeId: 'fiji',
+    segment: 'investment',
+    status: 'planning',
+    detail: 'ヤサワ諸島不動産投資ピッチ。iTaukei土地リース提案。',
+  },
+]

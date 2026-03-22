@@ -11,10 +11,26 @@ interface NavItem {
 
 interface NavSection {
   title?: string
+  showFor?: string
   items: NavItem[]
 }
 
 const sections: NavSection[] = [
+  {
+    title: 'Command',
+    showFor: 'personal',
+    items: [
+      {
+        label: 'Mission Control',
+        href: '/mission-control',
+        Icon: () => (
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 018 7h.01a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5zm-.25-2.25a1.25 1.25 0 112.5 0 1.25 1.25 0 01-2.5 0z" />
+          </svg>
+        ),
+      },
+    ],
+  } as NavSection,
   {
     items: [
       {
@@ -160,6 +176,20 @@ const sections: NavSection[] = [
     ],
   },
   {
+    title: 'Pacific Atlas',
+    items: [
+      {
+        label: 'Atlas',
+        href: '/atlas',
+        Icon: () => (
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0l1.8 5.5H16l-5 3.6 1.9 5.9L8 11.4 3.1 15l1.9-5.9-5-3.6h6.2L8 0z" />
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
     items: [
       {
         label: 'Settings',
@@ -178,8 +208,14 @@ export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
   const pathname = usePathname()
 
   const visibleSections = sections.filter((section) => {
+    if (section.showFor) {
+      return workspaceSlug === section.showFor
+    }
     if (section.title === 'Seasonal Labor') {
       return workspaceSlug === 'beyond-peaks'
+    }
+    if (section.title === 'Pacific Atlas') {
+      return workspaceSlug === 'pacific-atlas'
     }
     return true
   })

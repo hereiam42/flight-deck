@@ -579,6 +579,50 @@ export type Database = {
           },
         ]
       }
+      daily_briefs: {
+        Row: {
+          id: string
+          workspace_id: string
+          date: string
+          top_3: string[]
+          completed_yesterday: string[]
+          stale_missions: string[]
+          venture_health: Json
+          brief_text: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          date: string
+          top_3?: string[]
+          completed_yesterday?: string[]
+          stale_missions?: string[]
+          venture_health?: Json
+          brief_text?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          date?: string
+          top_3?: string[]
+          completed_yesterday?: string[]
+          stale_missions?: string[]
+          venture_health?: Json
+          brief_text?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_briefs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employer_leads: {
         Row: {
           board_id: string | null
@@ -944,6 +988,88 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missions: {
+        Row: {
+          id: string
+          workspace_id: string
+          title: string
+          description: string | null
+          venture: string
+          status: string
+          rank: number | null
+          urgency_score: number | null
+          impact_score: number | null
+          composite_score: number | null
+          deadline: string | null
+          blocked_by: string | null
+          claude_context: string | null
+          output_url: string | null
+          created_at: string
+          started_at: string | null
+          completed_at: string | null
+          last_touched: string
+          stale_flag: boolean
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          title: string
+          description?: string | null
+          venture: string
+          status?: string
+          rank?: number | null
+          urgency_score?: number | null
+          impact_score?: number | null
+          deadline?: string | null
+          blocked_by?: string | null
+          claude_context?: string | null
+          output_url?: string | null
+          created_at?: string
+          started_at?: string | null
+          completed_at?: string | null
+          last_touched?: string
+          stale_flag?: boolean
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          title?: string
+          description?: string | null
+          venture?: string
+          status?: string
+          rank?: number | null
+          urgency_score?: number | null
+          impact_score?: number | null
+          deadline?: string | null
+          blocked_by?: string | null
+          claude_context?: string | null
+          output_url?: string | null
+          created_at?: string
+          started_at?: string | null
+          completed_at?: string | null
+          last_touched?: string
+          stale_flag?: boolean
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_blocked_by_fkey"
+            columns: ["blocked_by"]
+            isOneToOne: false
+            referencedRelation: "missions"
             referencedColumns: ["id"]
           },
         ]
@@ -1392,6 +1518,7 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { ws_id: string }; Returns: boolean }
+      rerank_missions: { Args: { ws_id: string }; Returns: undefined }
       trigger_agent: { Args: { agent_id: string }; Returns: undefined }
     }
     Enums: {
