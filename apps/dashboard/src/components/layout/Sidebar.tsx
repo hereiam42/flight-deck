@@ -206,7 +206,13 @@ const sections: NavSection[] = [
   },
 ]
 
-export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
+interface SidebarProps {
+  workspaceSlug?: string
+  mobile?: boolean
+  onClose?: () => void
+}
+
+export function Sidebar({ workspaceSlug, mobile, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   const visibleSections = sections.filter((section) => {
@@ -254,6 +260,7 @@ export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={mobile ? onClose : undefined}
                     className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
                       active
                         ? 'bg-indigo-600/20 text-indigo-300'

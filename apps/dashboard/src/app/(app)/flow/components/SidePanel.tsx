@@ -366,7 +366,7 @@ export function SidePanel({
   if (!content) return null
 
   return (
-    <div className="absolute right-0 top-0 z-10 flex h-full w-80 flex-col overflow-hidden border-l"
+    <div className="fixed inset-x-0 bottom-0 z-10 flex max-h-[70vh] flex-col overflow-hidden rounded-t-xl border-t md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-0 md:h-full md:max-h-none md:w-80 md:rounded-none md:border-l md:border-t-0"
       style={{ background: SURFACE, borderColor: BORDER, animation: 'slideInRight 0.2s ease-out' }}>
       <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: BORDER }}>
         <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: TEXT_MUTED }}>

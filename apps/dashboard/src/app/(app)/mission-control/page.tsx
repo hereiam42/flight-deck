@@ -228,7 +228,7 @@ export default async function MissionControlPage() {
             .filter(([key]) => ventureHealth[key])
             .map(([key, v]) => (
             <div key={key} className="card !py-3">
-              <p className="text-[10px] text-zinc-600">{v.label}</p>
+              <p className="truncate text-[10px] text-zinc-600">{v.label}</p>
               <p className="text-lg font-semibold text-zinc-200">
                 {ventureHealth[key] ?? 0}{' '}
                 <span className="text-xs font-normal text-zinc-500">active</span>

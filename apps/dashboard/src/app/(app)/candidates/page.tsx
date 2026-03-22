@@ -38,8 +38,8 @@ export default async function CandidatesPage({
         <p className="text-sm text-zinc-500">{count ?? 0} candidates — processed by agents</p>
       </div>
 
-      <form className="flex gap-3">
-        <select name="status" defaultValue={status ?? ''} className="input w-36">
+      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+        <select name="status" defaultValue={status ?? ''} className="input sm:w-36">
           <option value="">All statuses</option>
           {['active', 'placed', 'inactive', 'archived'].map((s) => (
             <option key={s} value={s}>{s}</option>
@@ -50,15 +50,16 @@ export default async function CandidatesPage({
       </form>
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#2e2e32]">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Name</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Nationality</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Languages</th>
+              <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-zinc-500 sm:table-cell">Languages</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Visa</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Available</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Source</th>
+              <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-zinc-500 sm:table-cell">Available</th>
+              <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-zinc-500 sm:table-cell">Source</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Added</th>
             </tr>
           </thead>
@@ -74,7 +75,7 @@ export default async function CandidatesPage({
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 text-zinc-400">{c.nationality ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-400">
+                  <td className="hidden px-4 py-2.5 text-xs text-zinc-400 sm:table-cell">
                     {c.languages?.join(', ') || '—'}
                   </td>
                   <td className="px-4 py-2.5">
@@ -84,12 +85,12 @@ export default async function CandidatesPage({
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-400">
+                  <td className="hidden px-4 py-2.5 text-xs text-zinc-400 sm:table-cell">
                     {c.available_from && c.available_to
                       ? `${new Date(c.available_from).toLocaleDateString()} – ${new Date(c.available_to).toLocaleDateString()}`
                       : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500">{c.source_channel ?? '—'}</td>
+                  <td className="hidden px-4 py-2.5 text-xs text-zinc-500 sm:table-cell">{c.source_channel ?? '—'}</td>
                   <td className="px-4 py-2.5 text-xs text-zinc-500">
                     {new Date(c.created_at).toLocaleDateString()}
                   </td>
@@ -98,6 +99,7 @@ export default async function CandidatesPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {totalPages > 1 && (

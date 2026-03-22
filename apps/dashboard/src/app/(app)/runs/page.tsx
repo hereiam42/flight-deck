@@ -48,11 +48,11 @@ export default async function RunsPage({
       </div>
 
       {/* Filters */}
-      <form className="flex gap-3">
+      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <select
           name="agent"
           defaultValue={agent ?? ''}
-          className="input w-48"
+          className="input sm:w-48"
         >
           <option value="">All agents</option>
           {(agents ?? []).map((a) => (
@@ -62,7 +62,7 @@ export default async function RunsPage({
         <select
           name="status"
           defaultValue={status ?? ''}
-          className="input w-36"
+          className="input sm:w-36"
         >
           <option value="">All statuses</option>
           {['pending', 'running', 'completed', 'failed', 'cancelled'].map((s) => (
@@ -76,14 +76,15 @@ export default async function RunsPage({
       </form>
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#2e2e32]">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Agent</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Status</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Duration</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Tokens</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Cost</th>
+              <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-zinc-500 sm:table-cell">Tokens</th>
+              <th className="hidden px-4 py-2.5 text-left text-xs font-medium text-zinc-500 sm:table-cell">Cost</th>
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Started</th>
               <th className="px-4 py-2.5" />
             </tr>
@@ -105,10 +106,10 @@ export default async function RunsPage({
                   <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
                     {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : '—'}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
+                  <td className="hidden px-4 py-2.5 font-mono text-xs text-zinc-400 sm:table-cell">
                     {run.token_count ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
+                  <td className="hidden px-4 py-2.5 font-mono text-xs text-zinc-400 sm:table-cell">
                     {run.cost_usd ? `$${Number(run.cost_usd).toFixed(4)}` : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-xs text-zinc-500">
@@ -122,6 +123,7 @@ export default async function RunsPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

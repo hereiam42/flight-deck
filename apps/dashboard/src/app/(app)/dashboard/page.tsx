@@ -52,22 +52,22 @@ export default async function DashboardPage() {
         <p className="text-sm text-zinc-500">What happened while you were away</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <div className="stat-card">
           <p className="text-xs text-zinc-500">Active agents</p>
-          <p className="text-2xl font-semibold text-zinc-100">{activeAgents}</p>
+          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">{activeAgents}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-zinc-500">Runs today</p>
-          <p className="text-2xl font-semibold text-zinc-100">{runsToday}</p>
+          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">{runsToday}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-zinc-500">Pending review</p>
-          <p className={`text-2xl font-semibold ${pendingNotifs > 0 ? 'text-amber-400' : 'text-zinc-100'}`}>{pendingNotifs}</p>
+          <p className={`text-xl font-semibold sm:text-2xl ${pendingNotifs > 0 ? 'text-amber-400' : 'text-zinc-100'}`}>{pendingNotifs}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-zinc-500">Cost today</p>
-          <p className="text-2xl font-semibold text-zinc-100">${costToday.toFixed(4)}</p>
+          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">${costToday.toFixed(4)}</p>
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
 
               return (
                 <Link key={run.id} href={`/runs/${run.id}`} className="card block transition-colors hover:border-zinc-700">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={`inline-block h-2 w-2 rounded-full ${

@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/layout/Sidebar'
-import { TopNav } from '@/components/layout/TopNav'
+import { ShellLayout } from '@/components/layout/MobileNav'
 import { cookies } from 'next/headers'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -24,17 +23,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId) ?? workspaces[0] ?? null
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0b]">
-      <Sidebar workspaceSlug={currentWorkspace?.slug} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopNav
-          workspaces={workspaces}
-          currentWorkspace={currentWorkspace}
-        />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <ShellLayout workspaces={workspaces} currentWorkspace={currentWorkspace}>
+      {children}
+    </ShellLayout>
   )
 }

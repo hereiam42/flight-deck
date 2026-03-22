@@ -105,11 +105,11 @@ export default async function ContentPage({
       </div>
 
       {/* Filters */}
-      <form className="flex gap-3">
+      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <select
           name="status"
           defaultValue={status ?? ''}
-          className="input w-40"
+          className="input sm:w-40"
         >
           <option value="">All statuses</option>
           {['draft', 'pending_review', 'published', 'archived'].map((s) => (
@@ -121,7 +121,7 @@ export default async function ContentPage({
         <select
           name="type"
           defaultValue={type ?? ''}
-          className="input w-40"
+          className="input sm:w-40"
         >
           <option value="">All types</option>
           {['blog', 'guide', 'seo_page', 'social_post'].map((t) => (
@@ -133,7 +133,7 @@ export default async function ContentPage({
         <select
           name="board_id"
           defaultValue={board_id ?? ''}
-          className="input w-48"
+          className="input sm:w-48"
         >
           <option value="">All boards</option>
           {(boards ?? []).map((b) => (
@@ -148,7 +148,8 @@ export default async function ContentPage({
 
       {/* Table */}
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#2e2e32]">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Title</th>
@@ -202,6 +203,7 @@ export default async function ContentPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

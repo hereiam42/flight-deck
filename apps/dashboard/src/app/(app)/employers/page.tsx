@@ -42,11 +42,11 @@ export default async function EmployersPage({
       </div>
 
       {/* Filters */}
-      <form className="flex gap-3">
+      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <select
           name="status"
           defaultValue={status ?? ''}
-          className="input w-40"
+          className="input sm:w-40"
         >
           <option value="">All statuses</option>
           {['pending', 'active', 'inactive', 'archived'].map((s) => (
@@ -56,7 +56,7 @@ export default async function EmployersPage({
         <select
           name="plan"
           defaultValue={plan ?? ''}
-          className="input w-36"
+          className="input sm:w-36"
         >
           <option value="">All plans</option>
           {['free', 'basic', 'premium'].map((p) => (
@@ -70,7 +70,8 @@ export default async function EmployersPage({
       </form>
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#2e2e32]">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Company Name</th>
@@ -117,6 +118,7 @@ export default async function EmployersPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

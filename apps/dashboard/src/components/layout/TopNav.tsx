@@ -9,9 +9,10 @@ type WorkspaceRow = Database['public']['Tables']['workspaces']['Row']
 interface TopNavProps {
   workspaces: WorkspaceRow[]
   currentWorkspace: WorkspaceRow | null
+  onToggleSidebar?: () => void
 }
 
-export function TopNav({ workspaces, currentWorkspace }: TopNavProps) {
+export function TopNav({ workspaces, currentWorkspace, onToggleSidebar }: TopNavProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -24,6 +25,13 @@ export function TopNav({ workspaces, currentWorkspace }: TopNavProps) {
     <header className="flex h-14 items-center justify-between border-b border-[#2e2e32] bg-[#111113] px-4">
       {/* Workspace switcher */}
       <div className="flex items-center gap-2">
+        {onToggleSidebar && (
+          <button className="mr-2 md:hidden" onClick={onToggleSidebar}>
+            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         <select
           className="rounded-md border border-[#2e2e32] bg-[#18181b] px-2.5 py-1.5 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
           defaultValue={currentWorkspace?.id ?? ''}
@@ -42,7 +50,7 @@ export function TopNav({ workspaces, currentWorkspace }: TopNavProps) {
           ))}
         </select>
         {currentWorkspace && (
-          <span className="text-xs text-zinc-500">{currentWorkspace.slug}</span>
+          <span className="hidden text-xs text-zinc-500 sm:inline">{currentWorkspace.slug}</span>
         )}
       </div>
 

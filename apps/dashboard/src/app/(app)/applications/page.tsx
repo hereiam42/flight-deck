@@ -44,8 +44,8 @@ export default async function ApplicationsPage({
         <p className="text-sm text-zinc-500">{count ?? 0} applications — scored by agents</p>
       </div>
 
-      <form className="flex gap-3">
-        <select name="status" defaultValue={status ?? ''} className="input w-44">
+      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+        <select name="status" defaultValue={status ?? ''} className="input sm:w-44">
           <option value="">All statuses</option>
           {['new', 'reviewed', 'shortlisted', 'interviewing', 'offered', 'hired', 'rejected', 'withdrawn'].map((s) => (
             <option key={s} value={s}>{s}</option>
@@ -56,7 +56,8 @@ export default async function ApplicationsPage({
       </form>
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#2e2e32]">
               <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Candidate</th>
@@ -120,6 +121,7 @@ export default async function ApplicationsPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {totalPages > 1 && (
