@@ -1,23 +1,23 @@
 # Nexus Flight Deck
 
-Autonomous operating system for **Nexus株式会社** — the holding company for Beyond Peaks, Pacific Atlas, and related ventures.
+Autonomous business operating system for **Nexus株式会社**.
 
 ## Workspaces
 
-| Workspace | Slug | Description | Phase |
-|-----------|------|-------------|-------|
-| **Beyond Peaks** | `beyond-peaks` | Seasonal labor infrastructure (Niseko.Jobs, Watari, Employer OS) | Phase 2 done — Phase 3 next (SEO content engine, employer outreach) |
-| **Pacific Atlas** | `pacific-atlas` | Pacific-Japan trade & distribution (NAMA FIJI, Pacific Estate, Yasawa, Gov AI) | Planned |
-| **Nexus** | `nexus` | CEO command layer + personal operating system (Mission Control, morning briefs, calendar, admin) | Planned (Mission Control tables exist) |
-| **Finance** | `finance` | Personal wealth — crypto research, family office, portfolio tracking | Planned — Phase 3 |
+| Workspace | Slug | Description |
+|-----------|------|-------------|
+| **Beyond Peaks** | `beyond-peaks` | Seasonal labor infrastructure (Watari, Employer OS, Niseko.Jobs) |
+| **Pacific Atlas** | `pacific-atlas` | Pacific-Japan trade & distribution (NAMA FIJI, BWJ, Gov AI, Trade Intel) |
+| **Nexus** | `nexus` | CEO command layer + personal operating system (Mission Control, calendar, email, admin) |
+| **Finance** | `finance` | Personal wealth, fully isolated (crypto research, family office, portfolio) |
 
 ## Data Access Architecture
 
 ```
 Beyond Peaks ──── isolated. Agents read/write BP data only.
 Pacific Atlas ──── isolated. Agents read/write PA data only.
-Nexus ──────────── reads from BP + PA (cross-venture KPIs, morning brief
-                   aggregation). Also manages personal ops.
+Nexus ──────────── reads from BP + PA (cross-venture KPIs). Also manages
+                   personal ops.
 Finance ─────────── FULLY ISOLATED. No cross-workspace reads in either
                     direction. Guy-only access. Personal wealth data must
                     never be visible to any other workspace or future
