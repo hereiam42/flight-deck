@@ -1,5 +1,5 @@
 -- ============================================================
--- Pacific Atlas Flight Deck — Self-Review Support
+-- Nexus Flight Deck — Self-Review Support
 -- Migration: 005_self_review
 -- ============================================================
 

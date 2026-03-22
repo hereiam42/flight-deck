@@ -14,7 +14,7 @@ ALTER TABLE missions ADD COLUMN IF NOT EXISTS source_url text UNIQUE;
 -- ============================================================
 ALTER TABLE missions DROP CONSTRAINT IF EXISTS missions_venture_check;
 ALTER TABLE missions ADD CONSTRAINT missions_venture_check CHECK (venture IN (
-  'beyond_peaks', 'pacific_atlas', 'nama_fiji', 'football_mgr', 'personal', 'finance',
+  'beyond_peaks', 'pacific_atlas', 'nama_fiji', 'football_mgr', 'nexus', 'finance',
   'barker_wellness', 'trade_intel', 'gov_ai', 'flight_deck'
 ));
 
@@ -32,10 +32,10 @@ DECLARE
   ws_id uuid;
   agent_id uuid;
 BEGIN
-  SELECT id INTO ws_id FROM workspaces WHERE slug = 'personal' LIMIT 1;
+  SELECT id INTO ws_id FROM workspaces WHERE slug = 'nexus' LIMIT 1;
 
   IF ws_id IS NULL THEN
-    RAISE NOTICE 'Personal workspace not found. Skipping agent creation.';
+    RAISE NOTICE 'Nexus workspace not found. Skipping agent creation.';
     RETURN;
   END IF;
 
@@ -70,8 +70,8 @@ BEGIN
 - Flight Deck → "flight_deck"
 - Trade Intel → "trade_intel"
 - Gov AI → "gov_ai"
-- Other → "personal"
-- (empty/missing) → "personal"
+- Other → "nexus"
+- (empty/missing) → "nexus"
 
 **Priority → scores:**
 - P0 — Now → urgency_score: 9, impact_score: 9
@@ -107,7 +107,7 @@ $PROMPT$,
         "name": "read_notion_tracker",
         "type": "notion_read",
         "config": {
-          "database_id": "6c28bb40-e89b-4a09-a257-aacedfe3c8ea",
+          "database_id": "8a248051-20ca-47c8-a4a3-0da730264111",
           "description": "Read all rows from the Notion Project & Task Tracker database"
         }
       },

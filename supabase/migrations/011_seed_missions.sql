@@ -1,21 +1,21 @@
 -- ============================================================
 -- Mission Control — Initial Mission Seed
 -- Migration: 011_seed_missions
--- Run AFTER creating the Personal workspace
--- Replace WORKSPACE_ID with the actual personal workspace UUID
+-- Run AFTER creating the Nexus workspace
+-- Replace WORKSPACE_ID with the actual Nexus workspace UUID
 -- ============================================================
 
--- To get your personal workspace ID:
--- SELECT id FROM workspaces WHERE slug = 'personal';
+-- To get your Nexus workspace ID:
+-- SELECT id FROM workspaces WHERE slug = 'nexus';
 
 DO $$
 DECLARE
   ws_id uuid;
 BEGIN
-  SELECT id INTO ws_id FROM workspaces WHERE slug = 'personal' LIMIT 1;
+  SELECT id INTO ws_id FROM workspaces WHERE slug = 'nexus' LIMIT 1;
 
   IF ws_id IS NULL THEN
-    RAISE NOTICE 'Personal workspace not found. Create it first, then re-run this migration.';
+    RAISE NOTICE 'Nexus workspace not found. Create it first, then re-run this migration.';
     RETURN;
   END IF;
 
@@ -90,17 +90,17 @@ BEGIN
    'Run demand signal harvesting workflow in Japanese. Sources: 5ch スポーツ板, note.com, Twitter JP. Search terms: 草サッカー 管理 アプリ, サッカーチーム LINE グループ 不便, 社会人サッカー 出欠 管理. Looking for: complaints about LINE groups for team management, requests for better tools, evidence of willingness to pay.'),
 
   -- ============================================
-  -- PERSONAL / META
+  -- NEXUS / META
   -- ============================================
 
-  (ws_id, 'Mission Control — deploy to Flightdeck production', 'personal', 'queued', 8, 9,
-   'Run migration 010_mission_control.sql and 011_seed_missions.sql against production Supabase. Verify RLS policies. Create Personal workspace if not exists. Deploy dashboard code to Vercel.'),
+  (ws_id, 'Mission Control — deploy to Flightdeck production', 'nexus', 'queued', 8, 9,
+   'Run migration 010_mission_control.sql and 011_seed_missions.sql against production Supabase. Verify RLS policies. Create Nexus workspace if not exists. Deploy dashboard code to Vercel.'),
 
-  (ws_id, 'Morning Brief agent — build and deploy', 'personal', 'queued', 6, 8,
+  (ws_id, 'Morning Brief agent — build and deploy', 'nexus', 'queued', 6, 8,
    'Supabase Edge Function. Trigger: daily 06:00 JST cron. Process: query missions, re-rank, pick top 3, detect stale, summarize yesterday, generate brief_text. Write to daily_briefs table. Reference agent patterns from Phase 1B agents.');
 
   -- Rerank everything
   PERFORM rerank_missions(ws_id);
 
-  RAISE NOTICE 'Seeded % missions into Personal workspace', (SELECT COUNT(*) FROM missions WHERE workspace_id = ws_id);
+  RAISE NOTICE 'Seeded % missions into Nexus workspace', (SELECT COUNT(*) FROM missions WHERE workspace_id = ws_id);
 END $$;

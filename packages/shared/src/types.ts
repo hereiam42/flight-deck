@@ -1,5 +1,5 @@
 // ============================================================
-// Pacific Atlas Flight Deck — Shared Types
+// Nexus Flight Deck — Shared Types
 // ============================================================
 
 export type WorkspaceRole = 'owner' | 'admin' | 'operator' | 'viewer'

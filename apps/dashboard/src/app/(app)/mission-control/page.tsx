@@ -8,7 +8,7 @@ const VENTURE_LABELS: Record<string, { label: string; short: string; badgeCls: s
   pacific_atlas:  { label: 'Pacific Atlas', short: 'PA', badgeCls: 'bg-violet-500/10 text-violet-400', badgeStackCls: 'bg-violet-500/10 text-violet-400' },
   nama_fiji:     { label: 'NAMA FIJI',     short: 'NF', badgeCls: 'bg-amber-500/10 text-amber-400', badgeStackCls: 'bg-amber-500/10 text-amber-400' },
   football_mgr:  { label: 'Football Mgr',  short: 'FM', badgeCls: 'bg-sky-500/10 text-sky-400', badgeStackCls: 'bg-sky-500/10 text-sky-400' },
-  personal:      { label: 'Personal',      short: 'PR', badgeCls: 'bg-zinc-500/10 text-zinc-400', badgeStackCls: 'bg-zinc-500/10 text-zinc-400' },
+  nexus:         { label: 'Nexus',         short: 'NX', badgeCls: 'bg-zinc-500/10 text-zinc-400', badgeStackCls: 'bg-zinc-500/10 text-zinc-400' },
   finance:       { label: 'Finance',       short: 'FI', badgeCls: 'bg-rose-500/10 text-rose-400', badgeStackCls: 'bg-rose-500/10 text-rose-400' },
   barker_wellness: { label: 'Barker Wellness', short: 'BW', badgeCls: 'bg-pink-500/10 text-pink-400', badgeStackCls: 'bg-pink-500/10 text-pink-400' },
   trade_intel:   { label: 'Trade Intel',   short: 'TI', badgeCls: 'bg-red-500/10 text-red-400', badgeStackCls: 'bg-red-500/10 text-red-400' },

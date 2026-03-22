@@ -39,7 +39,7 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <h1 className="text-xl font-semibold text-zinc-100">Pacific Atlas Flight Deck</h1>
+          <h1 className="text-xl font-semibold text-zinc-100">Nexus Flight Deck</h1>
           <p className="mt-1 text-sm text-zinc-500">Sign in to your workspace</p>
         </div>
 

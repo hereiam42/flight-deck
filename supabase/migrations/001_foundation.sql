@@ -1,5 +1,5 @@
 -- ============================================================
--- Pacific Atlas Flight Deck — Foundation Schema
+-- Nexus Flight Deck — Foundation Schema
 -- Migration: 001_foundation
 -- ============================================================
 

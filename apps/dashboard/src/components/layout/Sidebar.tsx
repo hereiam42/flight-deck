@@ -19,7 +19,7 @@ interface NavSection {
 const sections: NavSection[] = [
   {
     title: 'Command',
-    showFor: 'personal',
+    showFor: 'nexus',
     items: [
       {
         label: 'Mission Control',
@@ -234,7 +234,7 @@ export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
         </div>
         <div>
           <p className="text-xs font-semibold text-zinc-200">Flight Deck</p>
-          <p className="text-[10px] text-zinc-500">Pacific Atlas</p>
+          <p className="text-[10px] text-zinc-500">Nexus株式会社</p>
         </div>
       </div>
 

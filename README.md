@@ -1,23 +1,42 @@
-# Pacific Atlas Flight Deck
+# Nexus Flight Deck
 
-Autonomous business operating system with four engines:
-- **Seasonal Labor OS** — Niseko.Jobs workforce management
-- **Pacific Atlas** — Hospitality operations intelligence
-- **Personal** — Personal productivity and scheduling
-- **Finance** — Financial monitoring and reporting
+Autonomous operating system for **Nexus株式会社** — the holding company for Beyond Peaks, Pacific Atlas, and related ventures.
+
+## Workspaces
+
+| Workspace | Slug | Description | Phase |
+|-----------|------|-------------|-------|
+| **Beyond Peaks** | `beyond-peaks` | Seasonal labor infrastructure (Niseko.Jobs, Watari, Employer OS) | Phase 2 done — Phase 3 next (SEO content engine, employer outreach) |
+| **Pacific Atlas** | `pacific-atlas` | Pacific-Japan trade & distribution (NAMA FIJI, Pacific Estate, Yasawa, Gov AI) | Planned |
+| **Nexus** | `nexus` | CEO command layer + personal operating system (Mission Control, morning briefs, calendar, admin) | Planned (Mission Control tables exist) |
+| **Finance** | `finance` | Personal wealth — crypto research, family office, portfolio tracking | Planned — Phase 3 |
+
+## Data Access Architecture
+
+```
+Beyond Peaks ──── isolated. Agents read/write BP data only.
+Pacific Atlas ──── isolated. Agents read/write PA data only.
+Nexus ──────────── reads from BP + PA (cross-venture KPIs, morning brief
+                   aggregation). Also manages personal ops.
+Finance ─────────── FULLY ISOLATED. No cross-workspace reads in either
+                    direction. Guy-only access. Personal wealth data must
+                    never be visible to any other workspace or future
+                    team member.
+```
 
 ## Architecture
 
 ```
 flight-deck/
 ├── apps/
-│   └── dashboard/          # Next.js 14 App Router — flight deck UI
+│   ├── dashboard/          # Next.js 15 App Router — Flight Deck UI
+│   └── boards/             # Public job board frontend (Niseko.Jobs)
 ├── supabase/
-│   ├── migrations/         # SQL migrations
-│   └── functions/          # Deno edge functions
+│   ├── migrations/         # SQL migrations (RLS, agents, workflows, missions)
+│   └── functions/          # Deno edge functions (agent-runtime)
 ├── packages/
 │   └── shared/             # Shared TypeScript types
-└── docs/                   # Architecture documentation
+└── turbo.json              # Turborepo config
 ```
 
 ## Getting Started
@@ -56,9 +75,9 @@ npm run dev
 supabase functions deploy agent-runtime
 ```
 
-## Phase 0 — Foundation
+## Foundation Layer
 
-The shared foundation layer provides:
+The shared foundation provides:
 - Multi-tenant workspace isolation via RLS
 - Agent registry (every agent is a database row)
 - Workflow DAG definitions
@@ -66,3 +85,4 @@ The shared foundation layer provides:
 - Tool/integration registry
 - Secret management via Supabase Vault
 - Human-in-the-loop notification queue
+- Mission Control with daily briefs and mission ranking

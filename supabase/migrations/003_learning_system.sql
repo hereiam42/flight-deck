@@ -1,5 +1,5 @@
 -- ============================================================
--- Pacific Atlas Flight Deck — Learning System + Runtime Enhancements
+-- Nexus Flight Deck — Learning System + Runtime Enhancements
 -- Migration: 003_learning_system
 -- ============================================================
 

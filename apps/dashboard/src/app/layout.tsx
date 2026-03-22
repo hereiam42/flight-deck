@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Pacific Atlas Flight Deck',
+  title: 'Nexus Flight Deck',
   description: 'Autonomous business operating system',
 }
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- Pacific Atlas Flight Deck — Cron Scheduler
+-- Nexus Flight Deck — Cron Scheduler
 -- Migration: 004_cron_scheduler
 -- Uses pg_cron + pg_net to trigger agent-runtime edge function
 -- ============================================================
