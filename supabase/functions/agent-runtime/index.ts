@@ -10,7 +10,7 @@ const corsHeaders = {
 
 interface ToolDef {
   name: string
-  type: 'database_read' | 'database_write' | 'web_search' | 'send_notification'
+  type: 'database_read' | 'database_write' | 'web_search' | 'send_notification' | 'notion_read'
   config: Record<string, unknown>
 }
 
@@ -29,12 +29,14 @@ interface RateLimits {
   database_writes: number
   web_searches: number
   notifications: number
+  notion_reads: number
 }
 
 const RATE_LIMITS = {
   database_writes: 100,
   web_searches: 50,
   notifications: 10,
+  notion_reads: 10,
 }
 
 function checkRateLimit(counters: RateLimits, type: keyof RateLimits): void {
@@ -229,6 +231,21 @@ function buildAnthropicTools(toolDefs: ToolDef[]): Anthropic.Tool[] {
               type: { type: 'string', description: 'Notification type: info, warning, approval_required, critical_approval' },
             },
             required: ['title'],
+          },
+        }
+      case 'notion_read':
+        return {
+          name: t.name,
+          description: (t.config.description as string) ?? 'Query a Notion database',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              filter: {
+                type: 'object',
+                description: 'Optional Notion filter object. See Notion API filter docs. If omitted, returns all rows.',
+              },
+              page_size: { type: 'number', description: 'Number of results per page. Default: 100, max: 100.' },
+            },
           },
         }
       default:
@@ -533,6 +550,124 @@ async function executeWebSearch(
   }
 }
 
+// ---- Notion property parsers ----
+
+function parseNotionTitle(prop: Record<string, unknown>): string {
+  const titleArr = prop.title as Array<Record<string, unknown>> | undefined
+  if (!titleArr?.length) return ''
+  return titleArr.map((t) => (t.plain_text as string) ?? '').join('')
+}
+
+function parseNotionRichText(prop: Record<string, unknown>): string {
+  const arr = prop.rich_text as Array<Record<string, unknown>> | undefined
+  if (!arr?.length) return ''
+  return arr.map((t) => (t.plain_text as string) ?? '').join('')
+}
+
+function parseNotionSelect(prop: Record<string, unknown>): string | null {
+  const sel = prop.select as Record<string, unknown> | null
+  return sel ? (sel.name as string) : null
+}
+
+function parseNotionDate(prop: Record<string, unknown>): string | null {
+  const d = prop.date as Record<string, unknown> | null
+  if (!d) return null
+  return (d.start as string) ?? null
+}
+
+// deno-lint-ignore no-explicit-any
+function parseNotionPage(page: any): Record<string, unknown> {
+  const props = page.properties as Record<string, Record<string, unknown>>
+  const pageUrl = page.url as string
+
+  const result: Record<string, unknown> = { page_url: pageUrl }
+
+  for (const [key, prop] of Object.entries(props)) {
+    const type = prop.type as string
+    switch (type) {
+      case 'title':
+        result[key] = parseNotionTitle(prop)
+        break
+      case 'rich_text':
+        result[key] = parseNotionRichText(prop)
+        break
+      case 'select':
+        result[key] = parseNotionSelect(prop)
+        break
+      case 'date':
+        result[key] = parseNotionDate(prop)
+        break
+      case 'number':
+        result[key] = prop.number
+        break
+      case 'checkbox':
+        result[key] = prop.checkbox
+        break
+      default:
+        // Skip unsupported property types
+        break
+    }
+  }
+
+  return result
+}
+
+async function executeNotionRead(
+  input: Record<string, unknown>,
+  config: Record<string, unknown>,
+  counters: RateLimits,
+): Promise<unknown> {
+  checkRateLimit(counters, 'notion_reads')
+
+  const notionKey = Deno.env.get('NOTION_API_KEY')
+  if (!notionKey) {
+    throw new Error('NOTION_API_KEY not configured. Add it to Supabase Edge Function secrets.')
+  }
+
+  const databaseId = config.database_id as string
+  if (!databaseId) throw new Error('notion_read tool missing database_id in config')
+
+  const allResults: Record<string, unknown>[] = []
+  let hasMore = true
+  let startCursor: string | undefined
+
+  // Paginate through all results
+  while (hasMore) {
+    const body: Record<string, unknown> = {
+      page_size: Math.min((input.page_size as number) ?? 100, 100),
+    }
+    if (input.filter) body.filter = input.filter
+    if (startCursor) body.start_cursor = startCursor
+
+    const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${notionKey}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text()
+      throw new Error(`Notion API error (${res.status}): ${errText}`)
+    }
+
+    const data = await res.json()
+    const pages = data.results as Array<Record<string, unknown>>
+
+    for (const page of pages) {
+      allResults.push(parseNotionPage(page))
+    }
+
+    hasMore = data.has_more === true
+    startCursor = data.next_cursor as string | undefined
+  }
+
+  return allResults
+}
+
 // ---- Main handler ----
 
 Deno.serve(async (req) => {
@@ -625,7 +760,7 @@ Deno.serve(async (req) => {
     runId = run.id
 
     // ---- 3. Initialize guardrail counters ----
-    const counters: RateLimits = { database_writes: 0, web_searches: 0, notifications: 0 }
+    const counters: RateLimits = { database_writes: 0, web_searches: 0, notifications: 0, notion_reads: 0 }
     const writeCountForRun = { count: 0 }
 
     // ---- 4. Resolve tool definitions from agent config ----
@@ -706,6 +841,9 @@ Deno.serve(async (req) => {
                   break
                 case 'web_search':
                   result = await executeWebSearch(inp, counters)
+                  break
+                case 'notion_read':
+                  result = await executeNotionRead(inp, toolDef.config, counters)
                   break
                 default:
                   result = { error: `Unknown tool type: ${toolDef.type}` }

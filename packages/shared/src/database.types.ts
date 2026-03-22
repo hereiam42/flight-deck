@@ -1008,6 +1008,7 @@ export type Database = {
           blocked_by: string | null
           claude_context: string | null
           output_url: string | null
+          source_url: string | null
           created_at: string
           started_at: string | null
           completed_at: string | null
@@ -1029,6 +1030,7 @@ export type Database = {
           blocked_by?: string | null
           claude_context?: string | null
           output_url?: string | null
+          source_url?: string | null
           created_at?: string
           started_at?: string | null
           completed_at?: string | null
@@ -1050,6 +1052,7 @@ export type Database = {
           blocked_by?: string | null
           claude_context?: string | null
           output_url?: string | null
+          source_url?: string | null
           created_at?: string
           started_at?: string | null
           completed_at?: string | null

@@ -10,6 +10,10 @@ const VENTURE_LABELS: Record<string, { label: string; short: string; badgeCls: s
   football_mgr:  { label: 'Football Mgr',  short: 'FM', badgeCls: 'bg-sky-500/10 text-sky-400', badgeStackCls: 'bg-sky-500/10 text-sky-400' },
   personal:      { label: 'Personal',      short: 'PR', badgeCls: 'bg-zinc-500/10 text-zinc-400', badgeStackCls: 'bg-zinc-500/10 text-zinc-400' },
   finance:       { label: 'Finance',       short: 'FI', badgeCls: 'bg-rose-500/10 text-rose-400', badgeStackCls: 'bg-rose-500/10 text-rose-400' },
+  barker_wellness: { label: 'Barker Wellness', short: 'BW', badgeCls: 'bg-pink-500/10 text-pink-400', badgeStackCls: 'bg-pink-500/10 text-pink-400' },
+  trade_intel:   { label: 'Trade Intel',   short: 'TI', badgeCls: 'bg-red-500/10 text-red-400', badgeStackCls: 'bg-red-500/10 text-red-400' },
+  gov_ai:        { label: 'Gov AI',        short: 'GA', badgeCls: 'bg-yellow-500/10 text-yellow-400', badgeStackCls: 'bg-yellow-500/10 text-yellow-400' },
+  flight_deck:   { label: 'Flight Deck',   short: 'FD', badgeCls: 'bg-orange-500/10 text-orange-400', badgeStackCls: 'bg-orange-500/10 text-orange-400' },
 }
 
 function formatDate(d: Date): string {
