@@ -7,6 +7,7 @@ interface NavItem {
   label: string
   href: string
   Icon: () => React.ReactNode
+  showFor?: string
 }
 
 interface NavSection {
@@ -45,6 +46,7 @@ const sections: NavSection[] = [
       {
         label: 'Flow',
         href: '/flow',
+        showFor: 'beyond-peaks',
         Icon: () => (
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
             <path d="M6 3.5A1.5 1.5 0 017.5 2h1A1.5 1.5 0 0110 3.5v1A1.5 1.5 0 018.5 6h-1A1.5 1.5 0 016 4.5v-1zM1 8.5A1.5 1.5 0 012.5 7h1A1.5 1.5 0 015 8.5v1A1.5 1.5 0 013.5 11h-1A1.5 1.5 0 011 9.5v-1zm10 0A1.5 1.5 0 0112.5 7h1A1.5 1.5 0 0115 8.5v1a1.5 1.5 0 01-1.5 1.5h-1A1.5 1.5 0 0111 9.5v-1zM8 4.5v3m-4.5 2L7 6.5m5.5 3L9 6.5" />
@@ -246,7 +248,7 @@ export function Sidebar({ workspaceSlug }: { workspaceSlug?: string }) {
               </p>
             )}
             <div className="space-y-0.5">
-              {section.items.map((item) => {
+              {section.items.filter((item) => !item.showFor || item.showFor === workspaceSlug).map((item) => {
                 const active = pathname === item.href || (pathname?.startsWith(item.href + '/') ?? false)
                 return (
                   <Link
