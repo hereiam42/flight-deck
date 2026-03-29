@@ -36,38 +36,19 @@ export function ApplyForm({ boardId, workspaceId, region }: { boardId: string; w
     ].filter(Boolean).join('\n')
 
     try {
-      // Find the inbound_application_processor agent
-      const agentsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/agents?name=eq.inbound_application_processor&workspace_id=eq.${workspaceId}&select=id`,
-        {
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-          },
-        },
-      )
-      const agents = await agentsRes.json()
-      if (!agents?.[0]?.id) throw new Error('Application processor not configured')
-
-      // Trigger the agent
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/agent-runtime`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-          },
-          body: JSON.stringify({
-            agent_id: agents[0].id,
-            input: applicationText,
-            triggered_by: 'website_form',
-          }),
-        },
-      )
+      // POST to server-side route — agent lookup and invocation happen server-side only
+      const res = await fetch('/api/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardId,
+          workspaceId,
+          applicationText,
+        }),
+      })
 
       if (!res.ok) {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({ error: 'Failed to submit' }))
         throw new Error(err.error ?? 'Failed to submit')
       }
 
