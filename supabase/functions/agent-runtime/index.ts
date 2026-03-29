@@ -385,6 +385,27 @@ async function executeDatabaseWrite(
     }
   }
 
+  // ---- GUARDRAIL: Sync safety — prevent mass mission kills from partial Notion data ----
+  if (table === 'missions' && operation === 'update' && data.status === 'killed') {
+    // Count how many active missions exist vs how many we're about to kill
+    const { count: activeMissionCount } = await supabase
+      .from('missions')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .not('status', 'in', '("done","killed")')
+
+    const killCount = writeCountForRun.count // kills so far this run
+    const totalActive = activeMissionCount ?? 0
+
+    if (totalActive > 0 && killCount > 0 && killCount >= totalActive * 0.5) {
+      throw new Error(
+        `Sync safety check failed: attempting to kill ${killCount} of ${totalActive} active missions (>= 50%). ` +
+        'This may indicate partial source data (e.g. Notion API rate limit or filter error). ' +
+        'Aborting to prevent data loss. Review manually.'
+      )
+    }
+  }
+
   // ---- GUARDRAIL: Capture before-state for activity log ----
   let beforeData: unknown = null
   const match = input.match as Record<string, unknown> | undefined
