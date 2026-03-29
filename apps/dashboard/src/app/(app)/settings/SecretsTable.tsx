@@ -1,6 +1,5 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -17,7 +16,6 @@ export function SecretsTable({
   secrets: Secret[]
   workspaceId: string
 }) {
-  const supabase = createClient()
   const router = useRouter()
   const [adding, setAdding] = useState(false)
   const [key, setKey] = useState('')
@@ -30,29 +28,37 @@ export function SecretsTable({
     setLoading(true)
     setError(null)
 
-    // NOTE: In production, this should go through an edge function
-    // that calls vault.create_secret() on the server side.
-    // Sending the raw value from the browser is a placeholder.
-    const { error: err } = await supabase.from('secrets').insert({
-      workspace_id: workspaceId,
-      key,
-      encrypted_value: `[encrypted:${value.substring(0, 4)}...]`,
-    })
+    try {
+      const res = await fetch('/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      })
 
-    if (err) {
-      setError(err.message)
-    } else {
-      setKey('')
-      setValue('')
-      setAdding(false)
-      router.refresh()
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to save secret' }))
+        setError(err.error ?? 'Failed to save secret')
+      } else {
+        setKey('')
+        setValue('')
+        setAdding(false)
+        router.refresh()
+      }
+    } catch {
+      setError('Failed to save secret')
     }
     setLoading(false)
   }
 
   async function handleDelete(id: string) {
-    await supabase.from('secrets').delete().eq('id', id)
-    router.refresh()
+    try {
+      await fetch(`/api/secrets?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      router.refresh()
+    } catch {
+      // Silently fail — user will see the secret still present
+    }
   }
 
   return (
