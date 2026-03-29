@@ -1,5 +1,5 @@
 import { resolveBoard } from '@/lib/board'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -11,7 +11,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
   const { data: job } = await supabase
     .from('jobs').select('title, location, employers(company_name)')
     .eq('id', slug).eq('board_id', board.id).single()
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function JobDetailPage({ params }: Props) {
   const { slug: id } = await params
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
 
   const { data: job } = await supabase
     .from('jobs')

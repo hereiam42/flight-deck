@@ -1,5 +1,5 @@
 import { resolveBoard } from '@/lib/board'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -9,7 +9,7 @@ interface Props { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
   const { data } = await supabase.from('content').select('title, seo_meta').eq('slug', slug).eq('board_id', board.id).single()
   if (!data) return {}
   const seo = data.seo_meta as Record<string, string> | null
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
 
   const { data: post } = await supabase
     .from('content')

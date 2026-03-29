@@ -1,10 +1,10 @@
 import { resolveBoard } from '@/lib/board'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default async function HomePage() {
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
 
   const [jobsRes, contentRes] = await Promise.all([
     supabase.from('jobs').select('id, title, location, start_date, end_date, accommodation_provided, employers(company_name)')

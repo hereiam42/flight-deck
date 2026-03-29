@@ -1,10 +1,10 @@
 import { resolveBoard } from '@/lib/board'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import type { MetadataRoute } from 'next'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
   const baseUrl = board.domain ? `https://${board.domain}` : 'http://localhost:3001'
 
   const [jobsRes, postsRes] = await Promise.all([

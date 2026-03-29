@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import { createServiceClient } from './supabase'
+import { createClient } from './supabase'
 import { notFound } from 'next/navigation'
 
 // Domain → slug mapping for production custom domains
@@ -29,7 +29,7 @@ export async function resolveBoard() {
 
   // 3. Fallback: use first active board (vercel.app previews, localhost)
   if (!slug) {
-    const supabase = createServiceClient()
+    const supabase = createClient()
     const { data } = await supabase
       .from('boards')
       .select('slug')
@@ -41,7 +41,7 @@ export async function resolveBoard() {
 
   if (!slug) notFound()
 
-  const supabase = createServiceClient()
+  const supabase = createClient()
   const { data: board } = await supabase
     .from('boards')
     .select('*')

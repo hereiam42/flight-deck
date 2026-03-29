@@ -1,10 +1,10 @@
 import { resolveBoard } from '@/lib/board'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default async function BlogPage() {
   const board = await resolveBoard()
-  const supabase = createServiceClient()
+  const supabase = createClient()
 
   const { data: posts } = await supabase
     .from('content')
