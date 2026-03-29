@@ -676,23 +676,26 @@ Deno.serve(async (req) => {
   }
 
   // ---- SECURITY: Authenticate request ----
-  // Accept either the agent secret header (for cron/internal) or a valid Supabase auth token (for dashboard)
+  // Only two valid auth paths:
+  // 1. x-agent-secret header (for cron, server-side callers, and the /api/apply route)
+  // 2. Service role key in Authorization header (for dashboard TestPanel)
+  // The anon key is explicitly NOT accepted — agent execution is privileged.
   const agentSecret = Deno.env.get('AGENT_SECRET')
   const authHeader = req.headers.get('Authorization') ?? ''
   const secretHeader = req.headers.get('x-agent-secret')
 
-  if (agentSecret && secretHeader !== agentSecret) {
-    // No valid agent secret — check if the request has a valid Supabase service role or anon key
+  const hasValidAgentSecret = agentSecret && secretHeader === agentSecret
+  const hasValidServiceRole = (() => {
     const token = authHeader.replace('Bearer ', '')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    return serviceKey && token === serviceKey
+  })()
 
-    if (token !== serviceKey && token !== anonKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+  if (!hasValidAgentSecret && !hasValidServiceRole) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const runStartedAt = Date.now()
