@@ -97,7 +97,7 @@ export function useAgents(workspaceId: string | null) {
           description: a.description,
           dbStatus: a.status,
           health: deriveHealth(a.status, total, successRate),
-          tier: a.tier ?? 1,
+          tier: 1, // tier is a tools-level concept, agents default to autonomous
           runs7d: total,
           successRate,
           lastRun: lastRunDate ? timeAgo(lastRunDate) : null,

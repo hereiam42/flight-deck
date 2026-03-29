@@ -110,7 +110,6 @@ export type Database = {
           schedule: string | null
           status: string
           system_prompt: string
-          tier: number
           tools: Json
           updated_at: string
           workspace_id: string
@@ -125,7 +124,6 @@ export type Database = {
           schedule?: string | null
           status?: string
           system_prompt: string
-          tier?: number
           tools?: Json
           updated_at?: string
           workspace_id: string
@@ -140,7 +138,6 @@ export type Database = {
           schedule?: string | null
           status?: string
           system_prompt?: string
-          tier?: number
           tools?: Json
           updated_at?: string
           workspace_id?: string
