@@ -50,7 +50,7 @@ export function useAgents(workspaceId: string | null) {
       // Fetch agents
       const { data: agentRows } = await supabase
         .from('agents')
-        .select('id, name, description, status, tier')
+        .select('id, name, description, status')
         .eq('workspace_id', workspaceId!)
 
       if (!agentRows || agentRows.length === 0) {
