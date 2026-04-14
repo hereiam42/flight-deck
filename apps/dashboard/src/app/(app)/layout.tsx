@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ShellLayout } from '@/components/layout/MobileNav'
+import { RefineProvider } from '@/components/layout/RefineProvider'
 import { cookies } from 'next/headers'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,8 +24,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId) ?? workspaces[0] ?? null
 
   return (
-    <ShellLayout workspaces={workspaces} currentWorkspace={currentWorkspace}>
-      {children}
-    </ShellLayout>
+    <RefineProvider>
+      <ShellLayout workspaces={workspaces} currentWorkspace={currentWorkspace}>
+        {children}
+      </ShellLayout>
+    </RefineProvider>
   )
 }
