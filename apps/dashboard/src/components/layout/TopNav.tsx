@@ -29,8 +29,7 @@ export function TopNav({ workspaces, currentWorkspace, onToggleSidebar }: TopNav
     router.push('/auth/login')
   }
 
-  function handleWorkspaceChange(workspaceId: string | null) {
-    if (!workspaceId) return
+  function handleWorkspaceChange(workspaceId: string) {
     document.cookie = `workspace_id=${workspaceId}; path=/; max-age=2592000`
     router.refresh()
   }
