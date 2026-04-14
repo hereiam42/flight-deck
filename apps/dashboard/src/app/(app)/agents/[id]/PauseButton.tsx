@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation'
 
 export function PauseButton({ agentId, currentStatus }: { agentId: string; currentStatus: string }) {
   const router = useRouter()
-  const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
   const isPaused = currentStatus === 'paused'
 
   async function handleToggle() {
     setLoading(true)
+    const supabase = createClient()
     const newStatus = isPaused ? 'active' : 'paused'
 
     await supabase

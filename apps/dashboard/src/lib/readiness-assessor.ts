@@ -1,3 +1,5 @@
+'use client'
+
 // Readiness Assessor — deterministic TypeScript function.
 // NOT an LLM. Scoring is math: SQL counts and weighted averages.
 //

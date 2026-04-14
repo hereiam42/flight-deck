@@ -14,12 +14,12 @@ interface Props {
 }
 
 export function NotificationActions({ notificationId, type, read, actioned, agentName, payload }: Props) {
-  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function markRead() {
     setLoading(true)
+    const supabase = createClient()
     await supabase
       .from('notifications')
       .update({ read: true })
@@ -30,6 +30,7 @@ export function NotificationActions({ notificationId, type, read, actioned, agen
 
   async function handleAction(action: 'approved' | 'rejected') {
     setLoading(true)
+    const supabase = createClient()
 
     // If approving content from the SEO content generator, publish the article
     if (action === 'approved' && agentName === 'seo_content_generator' && payload) {

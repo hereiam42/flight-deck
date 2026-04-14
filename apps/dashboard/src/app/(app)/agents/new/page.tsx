@@ -12,7 +12,6 @@ const MODELS = [
 
 export default function NewAgentPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,6 +44,7 @@ export default function NewAgentPage() {
       return
     }
 
+    const supabase = createClient()
     const { data, error: err } = await supabase
       .from('agents')
       .insert({

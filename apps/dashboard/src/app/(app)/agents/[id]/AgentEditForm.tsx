@@ -15,7 +15,6 @@ const MODELS = [
 
 export function AgentEditForm({ agent }: { agent: Agent }) {
   const router = useRouter()
-  const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -39,6 +38,7 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
     setLoading(true)
     setError(null)
 
+    const supabase = createClient()
     const promptChanged = form.system_prompt !== agent.system_prompt
 
     // If prompt changed, archive current version before saving

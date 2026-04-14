@@ -12,12 +12,12 @@ interface Props {
 }
 
 export function RunFeedback({ runId, agentId, workspaceId, existingFeedback }: Props) {
-  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function submit(feedbackType: 'thumbs_up' | 'thumbs_down') {
     setLoading(true)
+    const supabase = createClient()
     await supabase.from('run_feedback').insert({
       run_id: runId,
       agent_id: agentId,

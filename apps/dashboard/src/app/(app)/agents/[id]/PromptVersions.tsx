@@ -15,7 +15,6 @@ interface Version {
 }
 
 export function PromptVersions({ agentId, versions }: { agentId: string; versions: Version[] }) {
-  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -23,6 +22,7 @@ export function PromptVersions({ agentId, versions }: { agentId: string; version
   async function restore(version: Version) {
     if (!confirm(`Restore prompt version ${version.version_number}?`)) return
     setLoading(true)
+    const supabase = createClient()
 
     // Archive all versions
     await supabase
