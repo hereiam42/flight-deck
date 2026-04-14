@@ -2,6 +2,14 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Database } from '@flight-deck/shared'
 
 type WorkspaceRow = Database['public']['Tables']['workspaces']['Row']
@@ -21,48 +29,47 @@ export function TopNav({ workspaces, currentWorkspace, onToggleSidebar }: TopNav
     router.push('/auth/login')
   }
 
+  function handleWorkspaceChange(workspaceId: string | null) {
+    if (!workspaceId) return
+    document.cookie = `workspace_id=${workspaceId}; path=/; max-age=2592000`
+    router.refresh()
+  }
+
   return (
-    <header className="flex h-14 items-center justify-between border-b border-[#2e2e32] bg-[#111113] px-4">
-      {/* Workspace switcher */}
-      <div className="flex items-center gap-2">
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
+      <div className="flex items-center gap-3">
         {onToggleSidebar && (
-          <button className="mr-2 md:hidden" onClick={onToggleSidebar}>
-            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Button variant="ghost" size="sm" className="md:hidden" onClick={onToggleSidebar}>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-          </button>
+          </Button>
         )}
-        <select
-          className="rounded-md border border-[#2e2e32] bg-[#18181b] px-2.5 py-1.5 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
+        <Select
           defaultValue={currentWorkspace?.id ?? ''}
-          onChange={(e) => {
-            const ws = workspaces.find((w) => w.id === e.target.value)
-            if (ws) {
-              document.cookie = `workspace_id=${ws.id}; path=/; max-age=2592000`
-              router.refresh()
-            }
-          }}
+          onValueChange={handleWorkspaceChange}
         >
-          {workspaces.map((ws) => (
-            <option key={ws.id} value={ws.id}>
-              {ws.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {workspaces.map((ws) => (
+              <SelectItem key={ws.id} value={ws.id}>
+                {ws.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {currentWorkspace && (
-          <span className="hidden text-xs text-zinc-500 sm:inline">{currentWorkspace.slug}</span>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            {currentWorkspace.slug}
+          </span>
         )}
       </div>
 
-      {/* Right actions */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleSignOut}
-          className="btn-ghost text-xs"
-        >
-          Sign out
-        </button>
-      </div>
+      <Button variant="ghost" size="sm" onClick={handleSignOut}>
+        Sign out
+      </Button>
     </header>
   )
 }

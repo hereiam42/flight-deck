@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopNav } from './TopNav'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import type { Database } from '@flight-deck/shared'
 
 type WorkspaceRow = Database['public']['Tables']['workspaces']['Row']
@@ -19,11 +20,12 @@ export function ShellLayout({ workspaces, currentWorkspace, children }: ShellLay
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0b]">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar workspaceSlug={currentWorkspace?.slug} />
       </div>
+
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav
           workspaces={workspaces}
@@ -34,15 +36,13 @@ export function ShellLayout({ workspaces, currentWorkspace, children }: ShellLay
           {children}
         </main>
       </div>
-      {/* Mobile drawer */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={closeSidebar} />
-          <div className="relative h-full w-56">
-            <Sidebar workspaceSlug={currentWorkspace?.slug} mobile onClose={closeSidebar} />
-          </div>
-        </div>
-      )}
+
+      {/* Mobile sidebar drawer */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-56 p-0">
+          <Sidebar workspaceSlug={currentWorkspace?.slug} mobile onClose={closeSidebar} />
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

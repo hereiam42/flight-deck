@@ -1,110 +1,112 @@
-import { createClient } from '@/lib/supabase/server'
-import { getCurrentWorkspaceId } from '@/lib/workspace'
-import Link from 'next/link'
+'use client'
 
-interface SearchParams {
-  status?: string
-  page?: string
+import { type ColumnDef } from '@tanstack/react-table'
+import { DataTable } from '@/components/refine/DataTable'
+import { PageHeader } from '@/components/refine/PageHeader'
+import { StatusBadge } from '@/components/refine/StatusBadge'
+import { DateCell } from '@/components/refine/DateCell'
+import { Badge } from '@/components/ui/badge'
+
+interface Lead {
+  id: string
+  company_name: string
+  location: string | null
+  website_url: string | null
+  roles_hiring: string[] | null
+  season: string | null
+  contact_email: string | null
+  contact_page_url: string | null
+  confidence: string | null
+  status: string
+  notes: string | null
+  created_at: string
 }
 
-const PAGE_SIZE = 25
+const columns: ColumnDef<Lead, unknown>[] = [
+  {
+    accessorKey: 'company_name',
+    header: 'Company',
+    cell: ({ getValue }) => <span className="font-medium text-foreground">{getValue() as string}</span>,
+  },
+  {
+    accessorKey: 'location',
+    header: 'Location',
+    cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) ?? '—'}</span>,
+  },
+  {
+    accessorKey: 'season',
+    header: 'Season',
+    cell: ({ getValue }) => {
+      const s = getValue() as string | null
+      return s ? <Badge variant="outline" className="capitalize">{s}</Badge> : <span className="text-muted-foreground">—</span>
+    },
+  },
+  {
+    accessorKey: 'roles_hiring',
+    header: 'Roles',
+    cell: ({ getValue }) => {
+      const roles = getValue() as string[] | null
+      if (!roles?.length) return <span className="text-muted-foreground">—</span>
+      return (
+        <div className="flex max-w-[200px] flex-wrap gap-1">
+          {roles.slice(0, 3).map((r) => (
+            <Badge key={r} variant="outline" className="text-[10px]">{r}</Badge>
+          ))}
+          {roles.length > 3 && <span className="text-[10px] text-muted-foreground">+{roles.length - 3}</span>}
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: 'confidence',
+    header: 'Confidence',
+    cell: ({ getValue }) => {
+      const c = getValue() as string | null
+      if (!c) return <span className="text-muted-foreground">—</span>
+      return (
+        <Badge variant={c === 'high' ? 'default' : c === 'medium' ? 'secondary' : 'outline'} className="capitalize">
+          {c}
+        </Badge>
+      )
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ getValue }) => <StatusBadge status={getValue() as string} />,
+  },
+  {
+    accessorKey: 'website_url',
+    header: 'Website',
+    cell: ({ getValue }) => {
+      const url = getValue() as string | null
+      if (!url) return <span className="text-muted-foreground">—</span>
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+          {url.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 25)}
+        </a>
+      )
+    },
+  },
+  {
+    accessorKey: 'created_at',
+    header: 'Added',
+    cell: ({ getValue }) => <DateCell value={getValue() as string} />,
+  },
+]
 
-export default async function LeadsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>
-}) {
-  const { status, page: pageStr } = await searchParams
-  const page = parseInt(pageStr ?? '1', 10)
-  const supabase = await createClient()
-  const workspaceId = await getCurrentWorkspaceId()
-
-  let query = supabase
-    .from('employer_leads')
-    .select('*, boards(name)', { count: 'exact' })
-    .eq('workspace_id', workspaceId ?? '')
-    .order('created_at', { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-
-  if (status) query = query.eq('outreach_status', status)
-
-  const { data: leads, count } = await query
-  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
-
+export default function LeadsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-zinc-100">Employer Leads</h1>
-        <p className="text-sm text-zinc-500">{count ?? 0} leads — sourced by agents</p>
-      </div>
-
-      <form className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-        <select name="status" defaultValue={status ?? ''} className="input sm:w-44">
-          <option value="">All statuses</option>
-          {['new', 'contacted', 'follow_up_1', 'follow_up_2', 'responded', 'converted', 'rejected', 'stale'].map((s) => (
-            <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-        <button type="submit" className="btn-secondary">Filter</button>
-        {status && <Link href="/leads" className="btn-ghost">Clear</Link>}
-      </form>
-
-      <div className="card overflow-hidden p-0">
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-[#2e2e32]">
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Company</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Location</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Industry</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Website</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Source</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Added</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#2e2e32]">
-            {(leads ?? []).length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-500">No leads found</td></tr>
-            ) : (
-              (leads ?? []).map((lead) => (
-                <tr key={lead.id} className="hover:bg-[#18181b]">
-                  <td className="px-4 py-2.5 text-zinc-200">{lead.company_name}</td>
-                  <td className="px-4 py-2.5 text-zinc-400">{lead.location ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-zinc-400">{lead.industry ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    {lead.website ? (
-                      <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300">
-                        {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                      </a>
-                    ) : '—'}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400">
-                      {lead.outreach_status.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500">{lead.source ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500">
-                    {new Date(lead.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        </div>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-zinc-500">Page {page} of {totalPages}</p>
-          <div className="flex gap-2">
-            {page > 1 && <Link href={`/leads?page=${page - 1}${status ? `&status=${status}` : ''}`} className="btn-secondary">Previous</Link>}
-            {page < totalPages && <Link href={`/leads?page=${page + 1}${status ? `&status=${status}` : ''}`} className="btn-secondary">Next</Link>}
-          </div>
-        </div>
-      )}
+      <PageHeader
+        title="Leads"
+        subtitle="Employer leads found by Managed Agents"
+      />
+      <DataTable<Lead>
+        resource="leads"
+        columns={columns}
+        searchField="company_name"
+      />
     </div>
   )
 }

@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentWorkspaceId } from '@/lib/workspace'
 import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 function timeAgo(date: string): string {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -22,10 +24,7 @@ export default async function DashboardPage() {
   if (!workspaceId) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <p className="text-zinc-400">No workspace found.</p>
-          <Link href="/settings" className="btn-primary mt-4 inline-flex">Create workspace</Link>
-        </div>
+        <p className="text-muted-foreground">No workspace found.</p>
       </div>
     )
   }
@@ -45,41 +44,47 @@ export default async function DashboardPage() {
   const pendingNotifs = notifsRes.count ?? 0
   const activity = activityRes.data ?? []
 
+  const stats = [
+    { label: 'Active agents', value: activeAgents },
+    { label: 'Runs today', value: runsToday },
+    { label: 'Pending review', value: pendingNotifs, warn: pendingNotifs > 0 },
+    { label: 'Cost today', value: `$${costToday.toFixed(4)}` },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-zinc-100">Flight Deck</h1>
-        <p className="text-sm text-zinc-500">What happened while you were away</p>
+        <h1 className="text-lg font-semibold text-foreground">Flight Deck</h1>
+        <p className="text-sm text-muted-foreground">What happened while you were away</p>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <div className="stat-card">
-          <p className="text-xs text-zinc-500">Active agents</p>
-          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">{activeAgents}</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xs text-zinc-500">Runs today</p>
-          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">{runsToday}</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xs text-zinc-500">Pending review</p>
-          <p className={`text-xl font-semibold sm:text-2xl ${pendingNotifs > 0 ? 'text-amber-400' : 'text-zinc-100'}`}>{pendingNotifs}</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xs text-zinc-500">Cost today</p>
-          <p className="text-xl font-semibold text-zinc-100 sm:text-2xl">${costToday.toFixed(4)}</p>
-        </div>
+        {stats.map((s) => (
+          <Card key={s.label}>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className={`text-2xl font-semibold ${s.warn ? 'text-amber-400' : 'text-foreground'}`}>
+                {s.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Activity feed */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-zinc-300">Activity feed</h2>
-          <Link href="/runs" className="text-xs text-indigo-400 hover:text-indigo-300">All runs →</Link>
+          <h2 className="text-sm font-medium text-foreground">Activity feed</h2>
+          <Link href="/runs" className="text-xs text-primary hover:underline">All runs →</Link>
         </div>
         <div className="space-y-2">
           {activity.length === 0 ? (
-            <div className="card py-10 text-center text-zinc-500">No agent runs yet</div>
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                No agent runs yet
+              </CardContent>
+            </Card>
           ) : (
             activity.map((run) => {
               const agentName = (run.agents as { name: string } | null)?.name ?? 'Unknown'
@@ -91,34 +96,38 @@ export default async function DashboardPage() {
                   : null
 
               return (
-                <Link key={run.id} href={`/runs/${run.id}`} className="card block transition-colors hover:border-zinc-700">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-block h-2 w-2 rounded-full ${
-                          run.status === 'completed' ? 'bg-emerald-500' :
-                          run.status === 'failed' ? 'bg-red-500' :
-                          run.status === 'running' ? 'bg-yellow-500' : 'bg-zinc-500'
-                        }`} />
-                        <span className="text-sm font-medium text-zinc-200">{agentName}</span>
-                        <span className="text-xs text-zinc-600">{timeAgo(run.created_at)}</span>
-                        {run.triggered_by === 'cron' && (
-                          <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">cron</span>
-                        )}
+                <Link key={run.id} href={`/runs/${run.id}`}>
+                  <Card className="transition-colors hover:border-muted">
+                    <CardContent className="py-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-block h-2 w-2 rounded-full ${
+                              run.status === 'completed' ? 'bg-emerald-500' :
+                              run.status === 'failed' ? 'bg-red-500' :
+                              run.status === 'running' ? 'bg-yellow-500' : 'bg-muted'
+                            }`} />
+                            <span className="text-sm font-medium text-foreground">{agentName}</span>
+                            <span className="text-xs text-muted-foreground">{timeAgo(run.created_at)}</span>
+                            {run.triggered_by === 'cron' && (
+                              <Badge variant="outline" className="text-[10px]">cron</Badge>
+                            )}
+                          </div>
+                          {summary && (
+                            <p className="mt-1 truncate text-xs text-muted-foreground">{summary}…</p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          {run.cost_usd && (
+                            <p className="font-mono text-xs text-muted-foreground">${Number(run.cost_usd).toFixed(4)}</p>
+                          )}
+                          {run.duration_ms && (
+                            <p className="font-mono text-[10px] text-muted-foreground">{(run.duration_ms / 1000).toFixed(1)}s</p>
+                          )}
+                        </div>
                       </div>
-                      {summary && (
-                        <p className="mt-1 truncate text-xs text-zinc-500">{summary}…</p>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      {run.cost_usd && (
-                        <p className="font-mono text-xs text-zinc-400">${Number(run.cost_usd).toFixed(4)}</p>
-                      )}
-                      {run.duration_ms && (
-                        <p className="font-mono text-[10px] text-zinc-600">{(run.duration_ms / 1000).toFixed(1)}s</p>
-                      )}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </Link>
               )
             })
