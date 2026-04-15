@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "shopify-admin-skills": {
+      "source": "40RTY-ai/shopify-admin-skills",
+      "sourceType": "github",
+      "computedHash": "e1b1b2b4e66728b2956b66c52e5880549f4064b4fbfdf62094f288b365ace1ab"
+    }
+  }
+}

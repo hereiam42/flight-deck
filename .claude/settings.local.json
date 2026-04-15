@@ -4,7 +4,8 @@
       "Bash(find /c/Users/guyni/dev/flight-deck -maxdepth 3 -not -path */node_modules/* -not -path */.next/* -type d)",
       "Bash(npx supabase:*)",
       "mcp__claude_ai_Supabase__list_projects",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npx skills:*)"
     ]
   }
 }
